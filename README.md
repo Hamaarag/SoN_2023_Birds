@@ -2,11 +2,11 @@
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-This repository contains the **essential scripts and data** needed to **recreate the analyses and figures** for the **bird group** in the **State of Nature Report 2023** by Hamaarag.
+This repository contains the **essential scripts and data** needed to **recreate the analyses and figures** for the **bird group** in the [**State of Nature Report 2023**](https://hamaarag.org.il/report/%d7%93%d7%95%d7%97-%d7%9e%d7%a6%d7%91-%d7%94%d7%98%d7%91%d7%a2-2022-%d7%9b%d7%a8%d7%9a-%d7%9e%d7%92%d7%95%d7%95%d7%9f-%d7%91%d7%99%d7%95%d7%9c%d7%95%d7%92%d7%99/) by Hamaarag.
 
 ---
 
-## 📜 License
+## License
 
 This project is licensed under the **MIT License** – see the [LICENSE](LICENSE) file for details.
 
@@ -14,7 +14,7 @@ This project is licensed under the **MIT License** – see the [LICENSE](LICENSE
 
 ---
 
-## 📂 Contents
+## Contents
 
 This repository includes the following key files:
 
@@ -25,7 +25,7 @@ This repository includes the following key files:
 
 ---
 
-## ⚙️ How to Use
+## How to Use
 
 To reproduce the analyses and figures:
 
@@ -41,16 +41,21 @@ To reproduce the analyses and figures:
 
 ---
 
-## 📝 Citation
+## Citation
 
-If you use this repository, please **cite it** as follows:
+If you use this repository or its contents, please cite **both** the main report and this repository.
 
-> Hamaarag. *State of Nature Report 2023 - Birds*. Public Repository, 2024.  
-> Available at: [https://github.com/Hamaarag/SoN_2023_Birds](https://github.com/Hamaarag/SoN_2023_Birds)
+### **State of Nature Report 2023 – Biodiversity**
+Grossbard S, Renan I (Eds). 2024. *State of Nature Report 2023 – Biodiversity*.  
+Hamaarag – Israel’s National Ecosystem Assessment Program, Steinhardt Museum of Natural History, Tel Aviv University.
+
+### **SoN_2023_Birds Repository**
+Hamaarag. *State of Nature Report 2023 - Birds*. Public Repository, 2024.  
+Available at: [https://github.com/Hamaarag/SoN_2023_Birds](https://github.com/Hamaarag/SoN_2023_Birds)
 
 ---
 
-## 💎 Contact
+## Contact
 
-For questions or feedback, contact **Hamaarag** at [your-email@example.com](mailto:your-email@example.com).
+For questions or feedback, contact **Hamaarag** at [info@hamaarag.org.il](mailto:info@hamaarag.org.il).
 
