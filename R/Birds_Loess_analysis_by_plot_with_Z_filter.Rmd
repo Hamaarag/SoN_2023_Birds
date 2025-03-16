@@ -1,0 +1,1588 @@
+---
+title: "Birds_Loess_analysis_by_plot"
+author: "Ron Chen"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+# pcks <- list('devtools','rlang','ggplot2','data.table', 'dplyr','mvabund','kableExtra','lme4','MASS','vegan',
+#              'jtools', 'interactions','car','ecoCopula','emmeans','ggrepel','ggvenn','Cairo')
+# sapply(pcks, require, character = TRUE)
+library (devtools)
+library (rlang)
+library (ggplot2)
+library (data.table)
+library (dplyr)
+library (mvabund)
+library (kableExtra)
+library (lme4)
+library (MASS)
+library (vegan)
+library (jtools)
+library (interactions)
+library (car)
+library (ecoCopula)
+library (ggrepel)
+library (emmeans)
+library (Cairo)
+library (extrafont)
+library (ggvenn)
+
+source("plot_model_effect.R")
+source("prepare_bird_data_with_Z_filter.R") # see comment in second chunk - this function is not used in the analysis
+source("plot_alpha_diversity.R")
+source("plot_coefs_with_traits.R")
+source("plot_coefs_with_traits_for_publication.R")
+source("multiplot.R")
+source("plot_model_interaction.R")
+source("plot_two_coefs_with_traits_for_publication.R")
+source("plot_two_coefs_with_traits.R")
+
+# source_url("https://raw.githubusercontent.com/ronchen1/ron_functions/d2d0bab4dc65f29e53d316ae4098d0469711905b/R/multiplot.R")
+
+# define font name
+SoN_fontname <- "Almoni ML v5 AAA"
+
+# Define the output folder path
+output_path <- file.path("..","output", "loess")
+
+# Check if the output folder exists, and create it if it doesn't
+if (!dir.exists(output_path)) {
+  dir.create(output_path, recursive = TRUE)
+  message("Folder '", output_path, "' has been created.")
+} else {
+  message("Folder '", output_path, "' already exists.")
+}
+```
+
+```{r load using function}
+out <- prepare_bird_data()
+```
+
+no outliers found in Loess Covered Areas in the Northern Negev; therefore use prepare_bird_data function without Z filter (outputs data table with total count, required for subsequent analyses on rare species)
+
+```{r load using function 2}
+source("prepare_bird_data.R")
+out <- prepare_bird_data()
+var_names <- names(out)
+for (i in 1:length(var_names)) {
+  assign(var_names[i], out[[i]])
+}
+rm(out)
+P <- P_byplot[grepl("Loess",unit),][order(year,site)][,site:=factor(site)][,land_use:=factor(land_use,levels(land_use)[c(3,1,2)])]
+P_no_rare <- P_byplot_no_rare[grepl("Loess",unit),][order(year,site)][,site:=factor(site)][,land_use:=factor(land_use,levels(land_use)[c(3,1,2)])]
+```
+
+## Loess covered areas in the northern Negev
+
+Factors are land use (KKL plantings, Bedouine agriculture and natural loess) and time.
+Total 5 campaigns, one of which is pilot in 2012 which does not contain the bedouin agriculture land use level.
+3 levels of land use:
+KKL plantings: 5 campaigns 2012-2020, 9 plots in each campaign.
+Bedouin agriculture: 4 campaigns 2014-2020, plot numbers: 9, 11, 12 ,12 respective to years.
+Loess: 5 campaigns 2012-2020, plot numbers: 15,9,9,9,9 respective to years. Year 2012 had 3 sites that were not repeated: Goral (3 plots), Hatzerim Base (6 plots), Nevatim Base (3 plots). If need to throw out data, best is to throw out Nevatim and the 3 plots named Hatzerim Loess 1,2,3 (have low / outlying counts of biodiversity metrics).
+5 sites with 9 plots per site (3 for each land use X proximity combination).
+
+**Raw data**
+Total abundance: `r Araw[grepl("Loess",unit),sum(total_count)]`
+Number of observations: `r Araw[grepl("Loess",unit),.N]`
+Total richness: `r Araw[grepl("Loess",unit),uniqueN(SciName)]`
+
+**Filtered data**
+Total abundance: `r A[grepl("Loess",unit),sum(count_under_250)]`
+Number of observations: `r A[grepl("Loess",unit) & count_under_250>0,.N]`
+Total richness: `r A[grepl("Loess",unit) & count_under_250>0,uniqueN(SciName)]`
+
+
+### Model gma, abundance and richness
+
+Richness done *with* rare species.
+Abundance and mean abundance done *without* rare species.
+Full models include cosine and sine of the time difference from June 21st (in radians).
+
+#### richness
+
+Explore data.
+
+```{r richness data explore}
+# include rare species in analysis
+P.anal <- copy(P) # set a fixed variable name for analysis, if want to switch between data WITH rare species and data WITHOUT rare species then only change once here
+P.anal_no_pilot <- P.anal[pilot==FALSE]
+print("RICHNESS WITH RARE SPECIES")
+print("data with 2012")
+plot_alpha_diversity(P.anal, x_val = "land_use", y_val = "richness", ylab_val = "richness", xlab_val = "land use")
+print("data without 2012")
+plot_alpha_diversity(P.anal_no_pilot, x_val = "land_use", y_val = "richness", ylab_val = "richness", xlab_val = "land use")
+
+print("data with 2012")
+dotchart(P.anal$richness, groups = P.anal$land_use, pch = as.numeric(P.anal$land_use), ylab = "land use", xlab = "richness")
+print("data without 2012")
+dotchart(P.anal_no_pilot$richness, groups = P.anal_no_pilot$land_use, pch = as.numeric(P.anal_no_pilot$land_use), ylab = "land use", xlab = "richness")
+IVs <- c("richness", "year_ct","site","land_use", "td_sc", "cos_td_rad", "sin_td_rad", "h_from_sunrise", "cos_hsun", "sin_hsun", "monitors_name",
+                        "wind", "precipitation", "temperature", "clouds")
+kable(summary(P.anal[,..IVs]))%>% kable_styling(font_size = 11)
+```
+
+no observation for all 4 weather variables.
+many NAs for sampling time of day variables.exclude from model.
+
+
+```{r richness data explore 2}
+pairs(P.anal[,lapply(X = .SD,FUN = as.numeric),.SDcols=IVs[1:11]])
+kable(cor(P.anal[,lapply(X = .SD,FUN = as.numeric),.SDcols=IVs[1:11]], use = "pairwise.complete.obs")) %>% kable_styling(font_size = 11)
+```
+
+Fit Poisson glm, check for existence of overdispersion
+
+```{r model specification richness, warning=FALSE}
+mdl_r.poiss.int <- glm(data = P.anal, formula = richness ~ land_use * year_ct + cos_td_rad + sin_td_rad + site, family = poisson)
+od <- mdl_r.poiss.int$deviance/mdl_r.poiss.int$df.residual
+print("Estimating overdispersion parameter phi: (Res. Dev.)/(n-p) where n=number of observations; p=number of parameters in the model.")
+print(paste0('od = ',od))
+```
+
+Overdispersion parameter is < 1. Poisson more appropriate. Compare Poisson and negative binomial.
+
+```{r model specification richness 2}
+m0.po <- glm(data = P.anal, formula = richness ~ land_use*year_ct + cos_td_rad + sin_td_rad + site, family = poisson)
+m0.nb <- glm.nb(data = P.anal, formula = richness ~ land_use*year_ct + cos_td_rad + sin_td_rad + site)
+AIC(m0.po,m0.nb)
+print("poisson")
+plot(m0.po,which=1:3)
+print("neg bin")
+plot(m0.nb,which=1:3)
+```
+
+negative binomial did not converge because there is underdispersion and poisson is better.
+
+```{r model specification richness 3}
+m0 <- m0.po
+me0 <- glmer(data = P.anal, formula =  richness ~ land_use*year_ct + cos_td_rad + sin_td_rad + (1|site), family = poisson)
+```
+
+go with mixed model.
+
+```{r model specification richness 4}
+summary(me0)
+```
+
+perform stepwise model selection of poisson mixed model.
+
+```{r model selection richness}
+drop1(me0)
+```
+
+remove sine of time of year.
+
+```{r model selection richness 2}
+me1 <- glmer(data = P.anal, formula =  richness ~ land_use*year_ct + cos_td_rad + (1|site), family = poisson)
+drop1(me1)
+```
+
+land_use * year and cosine of time of year remain.
+Final model:
+
+```{r model selection richness 3}
+summary(me1)
+ranef(me1)
+dotplot(ranef(me1, condVar=TRUE))
+plot(me1)
+qqmath(me1)
+# scale location plot
+plot(me1, sqrt(abs(resid(.))) ~ fitted(.),
+     type = c("p", "smooth"),
+     main="scale-location",
+     par.settings = list(plot.line =
+                           list(alpha=1, col = "red",
+                                lty = 1, lwd = 2)))
+```
+
+
+### Model without interaction of land use with time, to test for overall temporal trend in richness (BUT SEE POST-HOC BELOW, WHICH IS THE PROPER WAY TO TEST FOR OVERALL TREND):
+
+
+```{r}
+me2 <- glmer(data = P.anal, formula =  richness ~ land_use + year_ct + cos_td_rad + (1|site), family = poisson)
+drop1(me2)
+```
+
+drop year.
+
+```{r}
+me2 <- glmer(data = P.anal, formula =  richness ~ land_use + cos_td_rad + (1|site), family = poisson)
+drop1(me2)
+```
+
+drop cosine.
+
+```{r}
+me2 <- glmer(data = P.anal, formula =  richness ~ land_use + (1|site), family = poisson)
+drop1(me2)
+```
+
+### After removing the interaction, overall temporal trend is not significant. only land use remains in the model:
+
+```{r}
+summary(me2)
+ranef(me2)
+dotplot(ranef(me2, condVar=TRUE))
+plot(me2)
+qqmath(me2)
+# scale location plot
+plot(me2, sqrt(abs(resid(.))) ~ fitted(.),
+     type = c("p", "smooth"),
+     main="scale-location",
+     par.settings = list(plot.line =
+                           list(alpha=1, col = "red",
+                                lty = 1, lwd = 2)))
+```
+
+## model interpretation
+
+```{r model interpretation richness}
+summ(me1, exp=T, digits = 3)
+intplot_year_land_use <- plot_model_interaction(P.anal = P.anal, m = me1, eff2plot = "year_ct", modvar2plot = "land_use", plot_points=FALSE, plot_residuals=FALSE, export_plot=TRUE, ylabel = NULL, fontname = SoN_fontname, fontsize=22, pdf_width=160, outpath = output_path, legend_position = "bottom") 
+# remove years 2012-2014 from Bedouin agriculture
+intplot_year_land_use$layers[[2]]$data$year_ct[101:125] <- NA
+intplot_year_land_use$data$year_ct[101:125] <- NA
+Cairo(file = file.path(output_path,"birds_Loess_richness_year_ct_by_land_use_interaction_bedo_agr_from_2014.pdf"), width = 160, height = 160*2/3, type = "PDF", units = "mm")
+print(intplot_year_land_use)
+dev.off()
+intplot_year_land_use
+
+m_coef <- fixef(me1)
+X <- unique(data.table(samp_date = as_date(as.duration(P.anal$timediff_Jun21+172)),
+                       contrib = exp(m_coef["cos_td_rad"]*P.anal$cos_td_rad))[order(samp_date)])
+plot(X$samp_date, X$contrib,xlab = "time of year", ylab = "Effect on richness (multiplier)", type = "b")
+```
+
+Test whether temporal trends are significantly different from zero, using emmeans package, FDR correction for multiple comparisons.
+
+```{r model interpretation richness 2}
+emm_year_ct <- emtrends(me1, specs = "land_use", var = "year_ct", type = "response")
+test_results_year_ct <- test(emm_year_ct, null = 0, adjust = "fdr")
+print(test_results_year_ct)
+
+emm_year_ct_dt <- as.data.table(emm_year_ct)
+iv_bedo_year_rel <- emm_year_ct_dt[grepl("Bedo",land_use),exp(year_ct.trend)]
+iv_bedo_tot_rel <- iv_bedo_year_rel^6
+```
+
+Test for pairwise differences among levels of land use, apply FDR correction for multiple comparisons.
+
+```{r model interpretation richness 3}
+emm_land_use <- emmeans(object = me1, ~land_use*year_ct)
+test_results_land_use <- test(pairs(emm_land_use, by="year_ct"), by=NULL, adjust="fdr")
+print(test_results_land_use)
+
+emm_land_use_dt <- as.data.table(emm_land_use)
+iv_loess_abs <- emm_land_use_dt[land_use=="Loess",exp(emmean)]
+iv_kkl_abs <- emm_land_use_dt[grepl("KKL",land_use),exp(emmean)]
+iv_bedo_abs <- emm_land_use_dt[grepl("Bedo",land_use),exp(emmean)]
+```
+
+**Test for overall temporal trend (averaged over the three land uses)**
+
+```{r, echo=TRUE}
+test_results_year_ct_overall <- contrast(object = emm_year_ct, method = list(mean_trend = c(1/3,1/3,1/3)))
+print(test_results_year_ct_overall)
+```
+
+**No significant overall temporal trend in richness in the Loess unit.**
+
+**Significant increase of `r (iv_bedo_year_rel-1)*100`% in richness per year on average for Bedouin agriculture (total increase of `r (iv_bedo_tot_rel-1)*100`% across six years 2014-2020), no significant temporal trend for Loess and KKL Plantings.**
+
+**on average over time, Loess richness (`r iv_loess_abs` species) is significantly lower than KKL (`r iv_kkl_abs` species; P=0.001); Bedouin agriculture (`r iv_bedo_abs` species) is not significantly different from both of them.**
+
+#### geometric mean of abundance
+
+Explore data.
+Exclude time of day because of high number of NAs.
+
+```{r gma data explore}
+# exclude rare species in analysis
+P.anal <- copy(P_no_rare)
+P.anal_no_pilot <- P.anal[pilot==FALSE]
+
+print("GEOMETRIC MEAN ABUNDANCE WITHOUT RARE SPECIES")
+print("data with 2012")
+plot_alpha_diversity(P.anal, x_val = "land_use", y_val = "gma", ylab_val = "gma", xlab_val = "land use")
+print("data without 2012")
+plot_alpha_diversity(P.anal_no_pilot, x_val = "land_use", y_val = "gma", ylab_val = "gma", xlab_val = "land use")
+
+print("data with 2012")
+dotchart(P.anal$gma, groups = P.anal$land_use, pch = as.numeric(P.anal$land_use), ylab = "land use", xlab = "gma")
+print("data without 2012")
+dotchart(P.anal_no_pilot$gma, groups = P.anal_no_pilot$land_use, pch = as.numeric(P.anal_no_pilot$land_use), ylab = "land use", xlab = "gma")
+IVs <- c("gma", "year_ct","site","land_use", "td_sc", "cos_td_rad", "sin_td_rad", "h_from_sunrise", "cos_hsun", "sin_hsun", "monitors_name",
+                        "wind", "precipitation", "temperature", "clouds")
+kable(summary(P.anal[,..IVs]))%>% kable_styling(font_size = 11)
+```
+
+Fit glm, compare gamma, gaussian (poisson inappropriate because response is not discrete)
+
+```{r model specification gma, warning=FALSE}
+mdl_g.gamma.int <- glm(data = P.anal, formula = gma ~ land_use*year_ct + cos_td_rad + sin_td_rad + site, family = Gamma)
+mdl_g.gauss.int <- glm(data = P.anal, formula = gma ~ land_use*year_ct + cos_td_rad + sin_td_rad + site, family = gaussian)
+plot(mdl_g.gamma.int,which = 1:3,sub.caption = "gamma")
+plot(mdl_g.gauss.int,which = 1:3,sub.caption = "gaussian")
+```
+
+Gamma seems better than gaussian.
+Fit fixed and mixed models.
+
+```{r model specification gma 2}
+m0 <- glm(data = P.anal, formula = gma ~ land_use*year_ct + cos_td_rad + sin_td_rad + site, family = Gamma)
+me0 <- glmer(data = P.anal, formula =  gma ~ land_use*year_ct + cos_td_rad + sin_td_rad + (1|site), family = Gamma)
+```
+
+Mixed model did not converge, use glm:
+
+```{r model specification gma 3}
+summary(m0)
+```
+
+perform stepwise model selection of Gaussian model.
+
+```{r model selection gma}
+m1 <- step(m0)
+```
+
+keep removing terms, because $\Delta AIC<2$.
+remove sine.
+
+```{r}
+m1 <- glm(data = P.anal, formula = gma ~ land_use*year_ct, family = Gamma)
+drop1(m1)
+```
+
+ year X land use remain.
+This is the final model:
+
+```{r model selection gma 2}
+summary(m1)
+plot(m1, which=1:3)
+```
+
+
+```{r model interpretation gma}
+summ(m1, digits = 3)
+intplot_year_land_use <- interact_plot(model = m1, data=P.anal, pred = year_ct, modx = land_use, partial.residuals = F, jitter = c(0.2), point.size = 3, rug = F, point.shape = F, interval = T)
+intplot_year_land_use
+```
+
+According to the model, no significant temporal trend for Loess, but interaction of year and land use is significant.
+Test whether temporal trends are significantly different from zero, using emmeans package, FDR correction for multiple comparisons.
+
+```{r model interpretation gma 2}
+emm_year_ct <- emtrends(m1, specs = "land_use", var = "year_ct", type = "response")
+test_results_year_ct <- test(emm_year_ct, null = 0, adjust = "fdr")
+print(test_results_year_ct)
+```
+
+**No significant temporal trend detected for all three land uses.**
+**In view of this, re-fit model without interaction term.**
+
+```{r model selection gma again - in view of post-hoc analyses}
+m1 <- glm(data = P.anal, formula = gma ~ land_use + year_ct, family = Gamma)
+m1 <- step(m1)
+```
+
+only land use remains.
+
+```{r}
+summary(m1)
+plot(m1, which=1:3)
+```
+
+
+```{r model interpretation gma 3}
+summ(m1, digits = 3)
+
+plot_model_effect(P.anal=P.anal, m=m1, eff2plot="land_use", plot_points = TRUE, plot_residuals = FALSE, export_plot=TRUE, ylabel = NULL, fontname = SoN_fontname, fontsize=22, pdf_width=160, outpath = output_path)
+
+effplot_land_use <- effect_plot(model = m1, data=P.anal, pred = land_use, interval = T, plot.points = T,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",
+                           main.title = "effect of land use",
+                           line.colors = "black", point.alpha = 0.25)
+effplot_land_use$layers[[2]]$geom_params$width <- 0.4
+effplot_land_use
+```
+
+Test for pairwise differences among levels of land use, apply FDR correction for multiple comparisons.
+
+```{r model interpretation gma 4}
+emm_land_use <- emmeans(object = m1, ~land_use)
+test_results_land_use <- test(pairs(emm_land_use), by=NULL, adjust="fdr")
+print(test_results_land_use)
+
+emm_land_use_dt <- as.data.table(emm_land_use)
+iv_loess_abs <- emm_land_use_dt[land_use=="Loess",1/(emmean)]
+iv_kkl_abs <- emm_land_use_dt[grepl("KKL",land_use),1/(emmean)]
+iv_bedo_abs <- emm_land_use_dt[grepl("Bedo",land_use),1/(emmean)]
+iv_loess_kkl_rel <- iv_loess_abs/iv_kkl_abs-1
+iv_bedo_kkl_rel <- iv_bedo_abs/iv_kkl_abs-1
+```
+
+**No significant difference in GMA between Loess (`r iv_loess_abs`) and Bedouin agriculture (`r iv_bedo_abs`). Compared to KKL Plantings (`r iv_kkl_abs`), natural Loess is `r iv_loess_kkl_rel`% higher (P=0.017) and Bedouin agriculture is `r iv_bedo_kkl_rel`% higher (P=0.002).**
+
+**No significant temporal trend detected overall in loess unit as well as for all three land uses separately.**
+
+#### abundance
+
+Explore data
+
+```{r abundance data explore}
+# exclude rare species in analysis
+P.anal <- copy(P_no_rare)
+P.anal_no_pilot <- P.anal[pilot==FALSE]
+
+print("ABUNDANCE WITHOUT RARE SPECIES")
+print("data with 2012")
+plot_alpha_diversity(P.anal, x_val = "land_use", y_val = "abundance", ylab_val = "abundance", xlab_val = "land use")
+print("data without 2012")
+plot_alpha_diversity(P.anal_no_pilot, x_val = "land_use", y_val = "abundance", ylab_val = "abundance", xlab_val = "land use")
+
+print("data with 2012")
+dotchart(P.anal$abundance, groups = P.anal$land_use, pch = as.numeric(P.anal$land_use), ylab = "land use", xlab = "abundance")
+print("data without 2012")
+dotchart(P.anal_no_pilot$abundance, groups = P.anal_no_pilot$land_use, pch = as.numeric(P.anal_no_pilot$land_use), ylab = "land use", xlab = "abundance")
+IVs <- c("abundance", "year_ct","site","land_use", "td_sc", "cos_td_rad", "sin_td_rad", "h_from_sunrise", "cos_hsun", "sin_hsun", "monitors_name",
+                        "wind", "precipitation", "temperature", "clouds")
+IVs <- c("abundance", "year_ct","site","land_use", "td_sc", "cos_td_rad", "sin_td_rad")
+kable(summary(P.anal[,..IVs]))%>% kable_styling(font_size = 11)
+```
+
+outliers in loess with total abundance >30, in bedouin agriculture with total abundance >120, in KKL with abundance>60. Examine:
+
+```{r abundance data explore 2}
+P.anal[grepl("Loess",land_use) & abundance>30]
+P.anal[grepl("KKL",land_use) & abundance>60]
+P.anal[grepl("Bedo",land_use) & abundance>120]
+```
+
+Exclude all three plots.
+
+```{r model specification abundance, warning=FALSE}
+P.anal <- P.anal[!(grepl("Loess",land_use) & abundance>30)]
+P.anal <- P.anal[!(grepl("Bedo",land_use) & abundance>120)]
+P.anal <- P.anal[!(grepl("KKL",land_use) & abundance>60)]
+mdl_a.po <- glm(data = P.anal, formula = abundance ~ land_use*year_ct + cos_td_rad + sin_td_rad + site, family = poisson)
+od <- mdl_a.po$deviance/mdl_a.po$df.residual
+print("Estimating overdispersion parameter phi: (Res. Dev.)/(n-p) where n=number of observations; p=number of parameters in the model.")
+print(paste0('od = ',od))
+plot(mdl_a.po,which = 1:2,sub.caption = "poisson")
+```
+
+PHI>1, hence choose negative binomial.
+Fit fixed and mixed models.
+Choose mixed model if possible, otherwise choose a model with fixed-effects only.
+
+```{r model specification abundance 2}
+m0 <- glm.nb(data = P.anal, formula = abundance ~ land_use*year_ct + cos_td_rad + sin_td_rad + site)
+me0 <- glmer.nb(data = P.anal, formula =  abundance ~ land_use*year_ct + cos_td_rad + sin_td_rad + (1|site), start = 4.51)
+```
+
+mixed model converged.
+
+```{r model specification abundance 3}
+summary(me0)
+ranef(me0)
+dotplot(ranef(me1, condVar=TRUE))
+plot(me0)
+qqmath(me0)
+# scale location plot
+plot(me0, sqrt(abs(resid(.))) ~ fitted(.),
+     type = c("p", "smooth"),
+     main="scale-location",
+     par.settings = list(plot.line =
+                           list(alpha=1, col = "red",
+                                lty = 1, lwd = 2)))
+```
+
+
+Perform stepwise model selection of mixed model.
+
+```{r model selection abundance}
+drop1(me0)
+```
+
+land use * year and sampling time of year remain.
+The final model:
+
+```{r model selection abundance 3}
+me1 <- me0
+summary(me1)
+ranef(me1)
+dotplot(ranef(me1, condVar=TRUE))
+plot(me1)
+qqmath(me1)
+# scale location plot
+plot(me1, sqrt(abs(resid(.))) ~ fitted(.),
+     type = c("p", "smooth"),
+     main="scale-location",
+     par.settings = list(plot.line =
+                           list(alpha=1, col = "red",
+                                lty = 1, lwd = 2)))
+```
+
+
+**Not the greatest fit in the world. Take into account when reporting the results.**
+It seems that temporal trends in the different land uses are weak and probably not significant. Interaction of year and KKL plantings is marginally significant, but not sure if it is different from zero.
+Test for difference of temporal trend from zero for each land use.
+
+```{r model selection abundance 4}
+emm_year_ct <- emtrends(me1, specs = "land_use", var = "year_ct", type = "response")
+test_results_year_ct <- test(emm_year_ct, null = 0, adjust = "fdr")
+print(test_results_year_ct)
+
+emm_year_ct_dt <- as.data.table(emm_year_ct)
+iv_bedo_year_rel <- emm_year_ct_dt[grepl("Bedo",land_use),exp(year_ct.trend)]
+iv_loess_year_rel <- emm_year_ct_dt[grepl("Loess",land_use),exp(year_ct.trend)]
+iv_kkl_year_rel <- emm_year_ct_dt[grepl("KKL",land_use),exp(year_ct.trend)]
+```
+
+**All three temporal trends are not significantly different from zero.**
+**Re-fit model without interaction of time with subunit**
+
+```{r}
+me1 <- glmer.nb(data = P.anal, formula =  abundance ~ land_use + year_ct + cos_td_rad + sin_td_rad + (1|site))
+drop1(me1)
+```
+
+drop year.
+
+```{r}
+me1 <- glmer.nb(data = P.anal, formula =  abundance ~ land_use + cos_td_rad + sin_td_rad + (1|site))
+drop1(me1)
+```
+
+Final model includes land use and sampling time of year.
+
+```{r}
+summary(me1)
+ranef(me1)
+dotplot(ranef(me1, condVar=TRUE))
+plot(me1)
+qqmath(me1)
+# scale location plot
+plot(me1, sqrt(abs(resid(.))) ~ fitted(.),
+     type = c("p", "smooth"),
+     main="scale-location",
+     par.settings = list(plot.line =
+                           list(alpha=1, col = "red",
+                                lty = 1, lwd = 2)))
+```
+
+**Still not the greatest fit in the world. Take into account when reporting the results.**
+Interpretation of abundance model:
+
+```{r model interpretation abundance, warning=FALSE}
+summ(me1,digits=3)
+
+# intplot_year_land_use <- interact_plot(model = me1, data=P.anal, pred = year_ct, modx = land_use, partial.residuals = F, jitter = c(0.2), point.size = 3, rug = F, point.shape = F, interval = T)
+# intplot_year_land_use
+
+plot_model_effect(P.anal=P.anal, m=me1, eff2plot="land_use", plot_points = TRUE, plot_residuals = FALSE, export_plot=TRUE, ylabel = NULL, fontname = SoN_fontname, fontsize=22, pdf_width=160, outpath = output_path)
+
+effplot_land_use <- effect_plot(model = me1, data=P.anal, pred = land_use, interval = T, plot.points = T,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",
+                           main.title = "effect of land use",
+                           line.colors = "black", point.alpha = 0.25)
+effplot_land_use$layers[[2]]$geom_params$width <- 0.4
+effplot_land_use
+
+m_coef <- fixef(me1)
+X <- unique(data.table(samp_date = as_date(as.duration(P.anal$timediff_Jun21+172)),
+                       contrib = exp(m_coef["cos_td_rad"]*P.anal$cos_td_rad + m_coef["sin_td_rad"]*P.anal$sin_td_rad)))[order(samp_date)]
+plot(X$samp_date, X$contrib,xlab = "time of year", ylab = "Effect on abundance (multiplier)", type = "b")
+```
+
+
+
+Test for pairwise differences in average abundance among levels of land use, apply FDR correction for multiple comparisons.
+
+```{r model interpretation abundance 3}
+emm_land_use <- emmeans(object = me1, ~land_use)
+test_results_land_use <- test(pairs(emm_land_use), by=NULL, adjust="fdr")
+print(test_results_land_use)
+
+emm_land_use_dt <- as.data.table(emm_land_use)
+iv_loess_abs <- emm_land_use_dt[land_use=="Loess",exp(emmean)]
+iv_kkl_abs <- emm_land_use_dt[grepl("KKL",land_use),exp(emmean)]
+iv_bedo_abs <- emm_land_use_dt[grepl("Bedo",land_use),exp(emmean)]
+iv_kkl_rel <- iv_kkl_abs/iv_loess_abs-1
+iv_bedo_rel <- iv_bedo_abs/iv_loess_abs-1
+```
+
+**Significant difference in average abundance among all three land uses -  Loess (`r iv_loess_abs`), Bedouin agriculture (`r iv_bedo_abs`) and KKL Plantings (`r iv_kkl_abs`).**
+
+**Total abundance of a KKL plantings plot is, on average, `r iv_kkl_rel*100`% higher compared to a natural loess plot; Bedouin agriculture is `r iv_bedo_rel*100`% higher compared to natural loess.**
+
+#### community analysis using package MVabund
+
+Explore single species observations, including mean-variance plot.
+There is a strong mean-var relationship, indicating that employing GLMs is the proper way to analyze, rather than OLS (assumption of homogeneity is violated).
+
+```{r explore single observations}
+abu_by_spp.loess <- abu_by_spp[grepl("Loess",unit),]
+abu_by_spp_no_rare.loess <- abu_by_spp_no_rare[grepl("Loess",unit),]
+
+spp <- abu_by_spp.loess[,.SD[,(length(col_names)+1):ncol(abu_by_spp.loess)]]
+spp_no_rare <- abu_by_spp_no_rare.loess[,.SD[,(length(col_names)+1):ncol(abu_by_spp_no_rare.loess)]]
+
+# filter out species with zero counts (were either not observed or are rare and were excluded)
+spp <- spp[,.SD,.SDcols = colSums(spp)>0]
+spp <- mvabund(spp)
+spp_no_rare <- spp_no_rare[,.SD,.SDcols = colSums(spp_no_rare)>0]
+spp_no_rare <- mvabund(spp_no_rare)
+
+env_data <- abu_by_spp_no_rare.loess[,..col_names]
+env_data[,site:=factor(site)][,land_use:=factor(land_use,levels(land_use)[c(3,1,2)])]
+
+try(expr = plot(spp_no_rare ~ abu_by_spp_no_rare.loess$land_use,overall.main="raw abundances", transformation = "no"))
+
+print("abundance observations, aggregated into plots and species (i.e., several observations from the same species in the same plot are aggregated):")
+plot(sort(spp_no_rare[spp_no_rare>0]))
+print("these are the actual observations, before aggregation into plots:")
+dotchart(sort(A_no_rare[grepl("Loess",unit),count_under_250])) # these are the actual observations, before aggregation into plots
+print("zoom in on high abundance observations:")
+dotchart(sort(A_no_rare[grepl("Loess",unit) & count_under_250>=30,count_under_250]))
+meanvar.plot(spp_no_rare, xlab = "mean abundance of a given species across sites", ylab = "variance of the abundance of a given species across sites")
+```
+
+start model specification:
+
+```{r community analysis MVabund model specification}
+mva_m0.po <- manyglm(formula = spp_no_rare ~ land_use*year_ct + cos_td_rad + sin_td_rad, family = "poisson", data = env_data)
+mva_m0.nb <- manyglm(formula = spp_no_rare ~ land_use*year_ct + cos_td_rad + sin_td_rad, family = "negative.binomial", data = env_data)
+aic_dt <- data.table(nb = mva_m0.nb$aic, po=mva_m0.po$aic)
+colMeans(aic_dt)
+print("POISSON")
+plot(mva_m0.po, which=1:3)
+print("NEGATIVE BINOMIAL")
+plot(mva_m0.nb, which=1:3)
+```
+
+negative binomial model is better than poisson according to residuals and AIC comparison.
+
+```{r community analysis MVabund model specification 2}
+mva_m0 <- mva_m0.nb
+mva_m1 <- manyglm(formula = spp_no_rare ~ land_use*year_ct + cos_td_rad + sin_td_rad +site, data = env_data)
+aic_dt$nb1 <- mva_m1$aic
+colMeans(aic_dt)
+```
+
+The addition of the explanatory variable 'site' is not improving the AIC of the model.
+stepwise selection of model:
+
+```{r community analysis MVabund model selection}
+drop1(mva_m0)
+```
+
+close call for sine. when included in the final model comes out borderline, P=0.05. remove.
+
+```{r community analysis MVabund model selection 2}
+mva_m1 <- manyglm(formula = spp_no_rare ~ land_use*year_ct + cos_td_rad , family = "negative.binomial", data = env_data)
+drop1(mva_m1)
+```
+
+final model includes land use * year, sampling time of year.
+
+```{r community analysis MVabund model validation}
+plot(mva_m1, which=1:3)
+```
+
+```{r community analysis MVabund model interpretation}
+#summ_m1 <- summary(mva_m1)
+#saveRDS(summ_m1, file = "../output/Loess_interactions_summary_output_999iter.rds")
+#anov_m1.uni <- anova(mva_m1, p.uni = "adjusted", nBoot = 99, show.time = "all")
+#saveRDS(anov_m1.uni, file = "../output/Loess_interactions_anova_output_99iter.rds")
+summ_m1 <- readRDS(file = "../output/Loess_interactions_summary_output_999iter.rds")
+print(summ_m1)
+anov_m1.uni <- readRDS(file = "../output/Loess_interactions_anova_output_99iter.rds")
+print(anov_m1.uni)
+```
+
+**All factors (land_use, year, land_use:year, time of year) have a statistically significant effect on community composition.**
+
+The interaction land use * year is significantly different from Loess only for KKL plantings, not for Bedouin agriculture. In addition, this term is only significant for 3 species: stone curlew, rock pigeon and house sparrow. Therefore, plot species - level model for these 3 species which includes the interaction, and re-run manyglm without interaction to simplify interpretation.
+
+```{r community analysis MVabund model interpretation 2}
+mva_m2 <- manyglm(formula = spp_no_rare ~ land_use + year_ct + cos_td_rad , family = "negative.binomial", data = env_data)
+#summ_m2 <- summary(mva_m2)
+#saveRDS(summ_m2, file = "../output/Loess_no_interactions_summary_output_999iter_2.rds")
+#anov_m2.uni <- anova(mva_m2, p.uni = "adjusted", nBoot = 99, show.time = "all")
+#saveRDS(anov_m2.uni, file = "../output/Loess_no_interactions_anova_output_99iter_2.rds")
+summ_m2 <- readRDS(file = "../output/Loess_no_interactions_summary_output_999iter_2.rds")
+print(summ_m2)
+anov_m2.uni <- readRDS(file = "../output/Loess_no_interactions_anova_output_99iter_2.rds")
+print(anov_m2.uni)
+```
+
+```{r community analysis MVabund model interpretation - plot coefficients}
+coefp <- merge(data.table(t(coef(mva_m2)/log(2)),keep.rownames=TRUE), data.table(t(anov_m2.uni$uni.p), keep.rownames = TRUE), by = "rn") # coefficients are on log2 scale to simplify interpretation, yet keep presenetation on log scale rather than linear. The link function used for poisson is log -> above 0 is a positive trend and below 0 is negative trend
+
+# add total species abundance
+coefp <- merge(coefp,as.data.table(colSums(spp_no_rare),keep.rownames = TRUE), by.x = "rn", by.y = "V1")
+
+# add hebrew name and traits
+sci_heb <- unique(A[,.(SciName,HebName)])
+sci_heb[,SciName:=make.names(SciName)]
+coefp <- merge(coefp, sci_heb, by.x = "rn", by.y = "SciName")
+
+# set column names based on the predictor variables
+colnames(coefp)[grepl("rn",colnames(coefp))] <- "SciName"
+colnames(coefp)[grepl("Intercept).x",colnames(coefp))] <- "intercept.coef"
+colnames(coefp)[grepl("Intercept).y",colnames(coefp))] <- "intercept.p"
+colnames(coefp)[colnames(coefp)=="settlementsNear"] <- "settlementsNear.coef"
+colnames(coefp)[colnames(coefp)=="settlements"] <- "settlements.p"
+colnames(coefp)[colnames(coefp)=="agricultureNear"] <- "agricultureNear.coef"
+colnames(coefp)[colnames(coefp)=="agriculture"] <- "agriculture.p"
+colnames(coefp)[grepl("cos_td_rad.x",colnames(coefp))] <- "cos_td_rad.coef"
+colnames(coefp)[colnames(coefp)=="cos_td_rad.y"] <- "cos_td_rad.p"
+colnames(coefp)[grepl("sin_td_rad.x",colnames(coefp))] <- "sin_td_rad.coef"
+colnames(coefp)[grepl("sin_td_rad.y",colnames(coefp))] <- "sin_td_rad.p"
+colnames(coefp)[colnames(coefp)=="year_ct.x"] <- "year_ct.coef"
+colnames(coefp)[colnames(coefp)=="year_ct.y"] <- "year_ct.p"
+colnames(coefp)[colnames(coefp)=="V2"] <- "species_abundance"
+colnames(coefp)[colnames(coefp)=="dunesshifting"] <- "dunesShifting.coef"
+colnames(coefp)[colnames(coefp)=="dunes"] <- "dunes.p"
+colnames(coefp)[colnames(coefp)=="site"] <- "site.p"
+colnames(coefp)[colnames(coefp)=="subunitCarmel"] <- "subunitCarmel.coef"
+colnames(coefp)[colnames(coefp)=="subunitGalilee"] <- "subunitGalilee.coef"
+colnames(coefp)[colnames(coefp)=="subunit"] <- "subunit.p"
+colnames(coefp)[colnames(coefp)=="habitatWadi"] <- "habitatWadi.coef"
+colnames(coefp)[colnames(coefp)=="habitat"] <- "habitat.p"
+colnames(coefp)[colnames(coefp)=="land_useLoess"] <- "land_useLoess.coef"
+colnames(coefp)[colnames(coefp)=="land_useBedouin Agriculture"] <- "land_use_Bedouin_Agriculture.coef"
+colnames(coefp)[colnames(coefp)=="land_useKKL Plantings"] <- "land_use_KKL_Plantings.coef"
+colnames(coefp)[colnames(coefp)=="land_use"] <- "land_use.p"
+colnames(coefp)[colnames(coefp)=="land_useLoess:year_ct"] <- "land_useLoess:year_ct.coef"
+colnames(coefp)[colnames(coefp)=="land_useBedouin Agriculture:year_ct"] <- "land_useBedouin Agriculture:year_ct.coef"
+colnames(coefp)[colnames(coefp)=="land_useKKL Plantings:year_ct"] <- "land_useKKL Plantings:year_ct.coef"
+colnames(coefp)[colnames(coefp)=="land_use:year_ct"] <- "land_use:year_ct.p"
+
+
+plot_coefs_year <- plot_coefs_with_traits(D = A_no_rare[grepl("Loess",unit)],
+                                     cp = coefp[,.(SciName,year_ct.coef,year_ct.p,species_abundance)],
+                                     plot_title = "Temporal effect on species abundance",
+                                     plot_xlabel = expression(paste("coefficient of year counter, (log"[2]," scale)")),
+                                     mark_batha = TRUE)
+plot_coefs_year
+
+plot_coefs_with_traits_for_publication(D = A_no_rare[grepl("Loess",unit)],
+                                                cp = coefp[,.(SciName,year_ct.coef,year_ct.p,species_abundance)],
+                                                plot_title = "Temporal effect on species abundance",
+                                                plot_xlabel = expression(paste("coefficient of year counter, (log"[2]," scale)")),
+                                                mark_batha = TRUE,
+                                                show_legend = FALSE,
+                                                export_plot = TRUE,
+                                                fontname = SoN_fontname,
+                                                effect_str = "year_ct",
+                                                outpath = output_path)
+
+plot_two_coefs_with_traits_for_publication(D = A_no_rare[grepl("Loess",unit)],
+cp = coefp[,.(SciName,coef.x=land_use_Bedouin_Agriculture.coef,coef.y=land_use_KKL_Plantings.coef, land_use.p,species_abundance)],
+                                     plot_title = "Effect of land use on species abundance",
+                                     plot_xlabel = expression(paste("coefficient of Bedouin agriculture (ref: natural loess; log"[2]," scale)")),
+                                     plot_ylabel = expression(paste("coefficient of KKL plantings (ref: natural loess; log"[2]," scale)")),
+                                     mark_batha = TRUE,
+                                     show_legend = FALSE,
+                                                export_plot = TRUE,
+                                                fontname = SoN_fontname,
+                                                effect_str = "land_use",
+                                                outpath = output_path)
+
+
+plot_coefs_land_use <- plot_two_coefs_with_traits(D = A_no_rare[grepl("Loess",unit)],
+                                     cp = coefp[,.(SciName,
+                                                   coef.x = land_use_Bedouin_Agriculture.coef,
+                                                   coef.y = land_use_KKL_Plantings.coef,
+                                                   land_use.p,species_abundance)],
+                                     plot_title = "Effect of land use on species abundance",
+                                     plot_xlabel = expression(paste("coefficient of Bedouin agriculture (ref: natural loess; log"[2]," scale)")),
+                                     plot_ylabel = expression(paste("coefficient of KKL plantings (ref: natural loess; log"[2]," scale)")),
+                                     mark_batha = TRUE)
+plot_coefs_land_use
+
+
+
+# marginal mean predictions for species abundances in 3 land uses
+# newdata <-  data.table(land_use = levels(env_data$land_use), year_ct = rep(mean(env_data$year_ct),3,1), cos_td_rad = rep(mean(env_data$cos_td_rad),3,1))
+# predict(object = mva_m2, newdata = newdata, type = "response")
+
+```
+
+**Significant negative temporal effect on house sparrow and positive effect on common myna.**
+**Significant effect land use: most species do not prefer natural loess over the other two habitats. Nonetheless, batha specialist species are not detected in our survey: is it possible they have disappeared?**
+
+### Pycnonotus xanthopygos - בולבול ממושקף
+```{r community analysis - per species models pycxan}
+##### Pycnonotus xanthopygos - בולבול ממושקף#####
+
+d.pycno <- cbind(env_data,data.table(Pycnonotus.xanthopygos = spp_no_rare[,"Pycnonotus.xanthopygos"]))
+m.pycno <- glm.nb(formula = Pycnonotus.xanthopygos ~ land_use + year_ct + cos_td_rad, data = d.pycno)
+coef(mva_m1)[,"Pycnonotus.xanthopygos"]
+coef(m.pycno)
+
+#emmeans
+ EMM <- emmeans(object = m.pycno, ~ land_use)
+ print(EMM)
+#KKL - Agri
+ (exp(-1.51)/exp(-2.22) - 1) * 100
+ 
+ test_results_land_use <- test(pairs(EMM, by=NULL, adjust="fdr"))
+ print(test_results_land_use)
+```
+
+### Iduna pallida - שיחנית קטנה
+
+```{r community analysis - per species models idupal}
+####Iduna pallida - שיחנית קטנה####
+
+d.pallida <- cbind(env_data,data.table(Iduna.pallida = spp_no_rare[,"Iduna.pallida"]))
+# this is not the same model as the manyglm, to show that the trend is mainly near settlements.
+m.pallida <- glm.nb(formula = Iduna.pallida ~ land_use + year_ct + cos_td_rad, data = d.pallida)
+coef(mva_m1)[,"Iduna.pallida"]
+coef(m.pallida)
+
+
+#emmeans
+ EMM <- emmeans(object = m.pallida, ~ land_use)
+ print(EMM)
+#KKL - Agri
+ (exp(-1.51)/exp(-2.22) - 1) * 100
+ 
+ test_results_land_use <- test(pairs(EMM, by=NULL, adjust="fdr"))
+ print(test_results_land_use)
+```
+
+### Spilopelia senegalensis - צוצלת
+
+```{r community analysis - per species models spisen}
+####Spilopelia senegalensis - צוצלת####
+
+d.spilop <- cbind(env_data,data.table(Spilopelia.senegalensis = spp_no_rare[,"Spilopelia.senegalensis"]))
+m.spilop <- glm.nb(formula = Spilopelia.senegalensis ~ land_use + year_ct + cos_td_rad, data = d.spilop)
+coef(mva_m1)[,"Spilopelia.senegalensis"]
+coef(m.spilop)
+
+spilo_land_use <- effect_plot(data = d.spilop, model = m.spilop, pred = land_use, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+#emmeans
+EMM <- emmeans(object = m.spilop, ~ land_use)
+print(EMM)
+#Agri - Loess
+(exp(-0.926)/exp(-33.404) - 1) * 100
+#KKL - Loess
+(exp(-3.532)/exp(-33.404) - 1) * 100
+#Agri - KKL
+(exp(-0.926 )/exp(-3.532) - 1) * 100
+test_results_subunit <- test(pairs(EMM, by=NULL, adjust="fdr"))
+print(test_results_subunit)
+
+emm_land_use_dt <- as.data.table(EMM)
+iv_loess_abs <- emm_land_use_dt[land_use=="Loess",exp(emmean)]
+print(iv_loess_abs)
+iv_kkl_abs <- emm_land_use_dt[grepl("KKL",land_use),exp(emmean)]
+print(iv_kkl_abs)
+iv_bedo_abs <- emm_land_use_dt[grepl("Bedo",land_use),exp(emmean)]
+print(iv_bedo_abs)
+iv_loess_kkl_rel <- (iv_kkl_abs/iv_loess_abs)-1
+print(iv_loess_kkl_rel)
+iv_bedo_kkl_rel <- iv_bedo_abs/iv_kkl_abs-1
+print(iv_bedo_kkl_rel)
+iv_loess_bedo_rel <- iv_bedo_abs/iv_loess_abs-1
+print(iv_loess_bedo_rel)
+```
+
+### Vanellus.spinosus - סיקסק
+
+```{r community analysis - per species models vanspi}
+#### Vanellus.spinosus - סיקסק####
+
+d.spinosus <- cbind(env_data,data.table(Vanellus.spinosus = spp_no_rare[,"Vanellus.spinosus"]))
+# this is not the same model as the manyglm, to show that the trend is mainly near settlements.
+m.spinosus <- glm.nb(formula = Vanellus.spinosus ~ land_use + year_ct + cos_td_rad, data = d.spinosus)
+coef(mva_m1)[,"Vanellus.spinosus"]
+coef(m.spinosus)
+
+spilo_land_use <- effect_plot(data = d.spinosus, model = m.spinosus, pred = land_use, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+#emmeans
+EMM <- emmeans(object = m.spinosus, ~ land_use)
+print(EMM)
+#Agri - KKL
+(exp(-2.40)/exp(-5.17) - 1) * 100
+test_results_subunit <- test(pairs(EMM, by=NULL, adjust="fdr"))
+print(test_results_subunit)
+```
+
+### Columba.livia - יונת סלעים
+
+```{r community analysis - per species models colliv}
+#### Columba.livia - יונת סלעים####
+
+d.livia <- cbind(env_data,data.table(Columba.livia = spp_no_rare[,"Columba.livia"]))
+# this is not the same model as the manyglm, to show that the trend is mainly near settlements.
+m.livia <- glm.nb(formula = Columba.livia ~ land_use + year_ct + cos_td_rad, data = d.livia)
+coef(mva_m1)[,"Columba.livia"]
+coef(m.livia)
+```
+
+### Streptopelia.decaocto - תור צווארון
+
+```{r community analysis - per species models strdec}
+#### Streptopelia.decaocto - תור צווארון####
+
+d.decaocto <- cbind(env_data,data.table(Streptopelia.decaocto = spp_no_rare[,"Streptopelia.decaocto"]))
+# this is not the same model as the manyglm, to show that the trend is mainly near settlements.
+m.decaocto <- glm.nb(formula = Streptopelia.decaocto ~ land_use + year_ct + cos_td_rad, data = d.decaocto)
+coef(mva_m1)[,"Streptopelia.decaocto"]
+coef(m.decaocto)
+
+#emmeans
+EMM <- emmeans(object = m.decaocto, ~ land_use)
+print(EMM)
+#KKL - Agri
+(exp(1.187)/exp(0.829) - 1) * 100
+test_results_subunit <- test(pairs(EMM, by=NULL, adjust="fdr"))
+print(test_results_subunit)
+
+decaocto_year <- effect_plot(data = d.decaocto, model = m.decaocto, pred = year_ct, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+decaocto_time <- as.data.table(decaocto_year$data$Streptopelia.decaocto)
+1 - (min(decaocto_time)/max(decaocto_time))
+
+decaocto_year$data$Streptopelia.decaocto
+
+1 - (0.2907255/0.9743222)
+```
+
+### Galerida.cristata - עפרוני מצויץ
+
+```{r community analysis - per species models galcri}
+####Galerida.cristata - עפרוני מצויץ####
+
+d.cristata <- cbind(env_data,data.table(Galerida.cristata = spp_no_rare[,"Galerida.cristata"]))
+# this is not the same model as the manyglm, to show that the trend is mainly near settlements.
+m.cristata <- glm.nb(formula = Galerida.cristata ~ land_use + year_ct + cos_td_rad, data = d.cristata)
+coef(mva_m1)[,"Galerida.cristata"]
+coef(m.cristata)
+
+#emmeans
+EMM <- emmeans(object = m.cristata, ~ land_use)
+print(EMM)
+#Loess - Agri 
+(exp(1.63 )/exp(1.35) - 1) * 100
+#Loess - KKL
+(exp(1.63)/exp(1.20) - 1) * 100
+#Agri - KKL
+(exp(1.35)/exp(1.20) - 1) * 100
+
+test_results_land_use <- test(pairs(EMM, by=NULL, adjust="fdr"))
+print(test_results_land_use)
+
+emm_land_use_dt <- as.data.table(EMM)
+iv_loess_abs <- emm_land_use_dt[land_use=="Loess",exp(emmean)]
+print(iv_loess_abs)
+iv_kkl_abs <- emm_land_use_dt[grepl("KKL",land_use),exp(emmean)]
+print(iv_kkl_abs)
+iv_bedo_abs <- emm_land_use_dt[grepl("Bedo",land_use),exp(emmean)]
+print(iv_bedo_abs)
+iv_loess_kkl_rel <- (iv_loess_abs/iv_kkl_abs)-1
+print(iv_loess_kkl_rel)
+iv_bedo_kkl_rel <- iv_bedo_abs/iv_kkl_abs-1
+print(iv_bedo_kkl_rel)
+iv_loess_bedo_rel <- iv_loess_abs/iv_bedo_abs-1
+print(iv_loess_bedo_rel)
+```
+
+### Upupa.epops - דוכיפת
+
+```{r community analysis - per species models upuepo}
+#### Upupa.epops - דוכיפת####
+
+d.epops <- cbind(env_data,data.table(Upupa.epops = spp_no_rare[,"Upupa.epops"]))
+# this is not the same model as the manyglm, to show that the trend is mainly near settlements.
+m.epops <- glm.nb(formula = Upupa.epops ~ land_use + year_ct + cos_td_rad, data = d.epops)
+coef(mva_m1)[,"Upupa.epops"]
+coef(m.epops)
+
+#emmeans
+EMM <- emmeans(object = m.epops, ~ land_use)
+print(EMM)
+#KKL - Loess
+(exp(-1.49)/exp(-1.90) - 1) * 100
+
+test_results_land_use <- test(pairs(EMM, by=NULL, adjust="fdr"))
+print(test_results_land_use)
+
+#### Lanius.excubitor - חנקן גדול####
+
+d.excubitor <- cbind(env_data,data.table(Lanius.excubitor = spp_no_rare[,"Lanius.excubitor"]))
+# this is not the same model as the manyglm, to show that the trend is mainly near settlements.
+m.excubitor <- glm.nb(formula = Lanius.excubitor ~ land_use + year_ct + cos_td_rad, data = d.excubitor)
+coef(mva_m1)[,"Lanius.excubitor"]
+coef(m.excubitor)
+
+#emmeans
+EMM <- emmeans(object = m.excubitor, ~ land_use)
+print(EMM)
+#KKL - Loess
+(exp(-0.485)/exp(-0.544) - 1) * 100
+
+test_results_land_use <- test(pairs(EMM, by=NULL, adjust="fdr"))
+print(test_results_land_use)
+```
+
+### Acridotheres.tristis - מיינה מצויה
+
+```{r community analysis - per species models acrtri}
+####  Acridotheres.tristis - מיינה מצויה####
+
+d.tristis <- cbind(env_data,data.table(Acridotheres.tristis = spp_no_rare[,"Acridotheres.tristis"]))
+# this is not the same model as the manyglm, to show that the trend is mainly near settlements.
+m.tristis <- glm.nb(formula = Acridotheres.tristis ~ land_use + year_ct + cos_td_rad, data = d.tristis)
+coef(mva_m1)[,"Acridotheres.tristis"]
+coef(m.tristis)
+
+tristis_year <- effect_plot(data = d.tristis, model = m.tristis, pred = year_ct, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+tristis_time <- as.data.table(tristis_year$data$Acridotheres.tristis)
+max(tristis_time)/min(tristis_time) - 1
+
+tristis_year$data$Acridotheres.tristis
+(0.250785946/0.002334107) - 1
+
+```
+
+## check general trend in species that were filtered due to rareness in dataset.
+
+```{r community analysis MVabund interpretation - rare species venn diagrams}
+all_spec_loess <- A[grepl("Loess",unit),.(count_under_250=sum(count_under_250), total_count = sum(total_count)), keyby = SciName][total_count>0][,SciName]
+non_rare_spec_loess <- A_no_rare[grepl("Loess",unit),.(count_under_250=sum(count_under_250), total_count = sum(total_count)), keyby = SciName][total_count>0][,SciName]
+rare_spec_loess <- setdiff(all_spec_loess,non_rare_spec_loess)
+A_rare_in_loess_unit <- A[grepl("Loess",unit) & SciName %in% rare_spec_loess]
+rare_in_loess_unit_by_land_use <- dcast.data.table(A_rare_in_loess_unit, formula = "SciName + HebName ~ land_use",fun.aggregate = sum, value.var = "count_under_250")
+
+# draw venn diagram for presence / absence of rare species that did not make the cutoff
+#Reverse species names for pdf file
+strReverse <- function(x){sapply(lapply(strsplit(x, NULL), rev), paste, collapse="")}
+rare_in_loess_unit_by_land_use[,HebName:=factor(strReverse(as.character(HebName)))]
+#make list of species names
+rare_list_hebname <- list(`Bedouin agriculture` = unique(rare_in_loess_unit_by_land_use[`Bedouin Agriculture`>0,HebName]),
+                  `KKL plantings` = unique(rare_in_loess_unit_by_land_use[`KKL Plantings`>0,HebName]),
+                  `Natural loess` = unique(rare_in_loess_unit_by_land_use[Loess>0,HebName]))
+
+#Venn diagram + save pdf with Cairo
+venn_land_use <- ggvenn(data = rare_list_hebname, label_sep = "\n", fill_alpha = 0.3, text_size = 4, digits=0)
+Cairo(file = "../output/loess/venn_land_use.pdf", width = 160, height = 160*(2/3), type = "PDF", units = "mm", fonts = SoN_fontname)
+print(venn_land_use)
+dev.off() 
+
+#Venn diagram + save pdf with Cairo
+venn_land_use_heb_names <- ggvenn(data = rare_list_hebname, show_elements = TRUE, label_sep = "\n", fill_alpha = 0.3, text_size = 2)
+Cairo(file = "../output/loess/venn_land_use_heb_names.pdf", width = 160, height = 160*(2/3), type = "PDF", units = "mm", fonts = SoN_fontname)
+print(venn_land_use_heb_names)
+dev.off() 
+
+
+# find whether species that appeared only in a single land use are batha specialists / endangered / synanthrope
+# get column names of vegetation formation
+VegColNames <- grep("VegetationFormation",colnames(A),value = TRUE)
+VegColNames_batha <- grep("low.shrubland|high.shrubland|herbaceous|field.crops",VegColNames, value = TRUE)
+VegColNames_non_batha <- setdiff(VegColNames,VegColNames_batha)
+  
+tra <- unique(A[grepl("Loess",unit) & count_under_250>0,.SD,
+                .SDcols = c("SciName","HebName","ConservationCodeIL2018_ordinal","AlienInvasive","Synanthrope","NativeInvasive",
+                            VegColNames)])
+tra[,batha:=apply(.SD,1, \(x) any(x)),.SDcols = VegColNames_batha][,non_batha:=apply(.SD,1, \(x) !any(x)),
+                                                                   .SDcols = VegColNames_non_batha][,batha_only:=batha & non_batha]
+
+rare_in_loess_unit_by_land_use[,land_use_sum:=apply(.SD,1,\(x) sum(x>0)),
+                               .SDcols = c("Loess","Bedouin Agriculture","KKL Plantings")]
+
+batha_in_loess <- tra[SciName %in% rare_in_loess_unit_by_land_use[land_use_sum==1 & Loess>0,SciName] & batha_only==TRUE,.(SciName,HebName)]
+
+batha_in_bedo <- tra[SciName %in% rare_in_loess_unit_by_land_use[land_use_sum==1 & `Bedouin Agriculture`>0,SciName] & batha_only==TRUE,.(SciName,HebName)]
+
+batha_in_kkl <- tra[SciName %in% rare_in_loess_unit_by_land_use[land_use_sum==1 & `KKL Plantings`>0,SciName] & batha_only==TRUE,.(SciName,HebName)]
+
+endang_in_loess <- tra[SciName %in% rare_in_loess_unit_by_land_use[land_use_sum==1 & Loess>0,SciName]  & ConservationCodeIL2018_ordinal>=3,.(SciName,HebName)]
+
+endang_in_bedo <- tra[SciName %in% rare_in_loess_unit_by_land_use[land_use_sum==1 & `Bedouin Agriculture`>0,SciName]  & ConservationCodeIL2018_ordinal>=3,.(SciName,HebName)]
+
+endang_in_kkl <- tra[SciName %in% rare_in_loess_unit_by_land_use[land_use_sum==1 & `KKL Plantings`>0,SciName]  & ConservationCodeIL2018_ordinal>=3,.(SciName,HebName)]
+```
+
+Of the 24 species that did not make the rare species cutoff, 9 (38%) appeared only in the natural loess vs. only 3 (12%) in KKL plantings and 2 (8%) in the Bedouin agriculture. Of these 9 species, `r nrow(batha_in_loess)` are defined as batha specialists, vs. `r nrow(batha_in_kkl)` in KKL plantings and `r nrow(batha_in_bedo)` in Bedouin agriculture, respectively. Moreover, of the 9 species unique to the natural loess, `r nrow(endang_in_loess)` are endangered vs. `r nrow(endang_in_kkl)` in KKL plantings and `r nrow(endang_in_bedo)` in Bedouin agriculture, respectively.
+
+
+## Test whether there is a temporal trend within batha specialists, without filtering rare species
+
+
+```{r}
+spec_names_batha <- as.character(tra[batha_only==TRUE,SciName])
+P_batha <- copy(abu_by_spp)[grepl("Loess",unit)]
+P_batha[,`:=`(richness = apply(.SD,1,(\(x) sum(x>0))),
+               abundance = apply(.SD,1,sum)),
+         .SDcols = spec_names_batha]
+P_batha <- P_batha[,.SD,.SDcols = c(col_names,"richness","abundance")][
+  ,`:=`(year=factor(year), land_use=factor(land_use, levels = c("Loess","Bedouin Agriculture","KKL Plantings")))][
+    order(unit,subunit,year_ct, site, settlements, agriculture, habitat, dunes,land_use,point_name)]
+
+P.anal <- P_batha
+print("RICHNESS OF ONLY BATHA SPECIALISTS, WITH RARE SPECIES")
+plot_alpha_diversity(P.anal, x_val = "land_use", y_val = "richness", ylab_val = "richness", xlab_val = "land use")
+
+print("ABUNDANCE OF ONLY BATHA SPECIALISTS, WITH RARE SPECIES")
+plot_alpha_diversity(P.anal, x_val = "land_use", y_val = "abundance", ylab_val = "abundance", xlab_val = "land use")
+```
+
+```{r}
+mdl_r.poiss.int <- glm(data = P.anal, formula = abundance ~ land_use * year_ct + cos_td_rad + sin_td_rad + site, family = poisson)
+od <- mdl_r.poiss.int$deviance/mdl_r.poiss.int$df.residual
+print("Estimating overdispersion parameter phi: (Res. Dev.)/(n-p) where n=number of observations; p=number of parameters in the model.")
+print(paste0('od = ',od))
+m0.po <- glm(data = P.anal, formula = abundance ~ land_use*year_ct + cos_td_rad + sin_td_rad + site, family = poisson)
+plot(m0.po,which=1:3)
+m0.nb <- glm.nb(data = P.anal, formula = abundance ~ land_use*year_ct + cos_td_rad + sin_td_rad + site)
+plot(m0.nb,which=1:3)
+```
+
+Prefer poisson because phi ~ 1 and neg bin model did not converge.
+
+```{r}
+me0 <- glmer(data = P.anal, formula =  abundance ~ land_use*year_ct + cos_td_rad + sin_td_rad + (1|site), family = poisson)
+```
+
+mixed model converged.
+
+```{r}
+summary(me0)
+ranef(me0)
+dotplot(ranef(me0, condVar=TRUE))
+plot(me0)
+qqmath(me0)
+# scale location plot
+plot(me0, sqrt(abs(resid(.))) ~ fitted(.),
+     type = c("p", "smooth"),
+     main="scale-location",
+     par.settings = list(plot.line =
+                           list(alpha=1, col = "red",
+                                lty = 1, lwd = 2)))
+```
+
+model selection
+
+```{r}
+drop1(me0)
+```
+
+drop sine
+
+```{r}
+me1 <- glmer(data = P.anal, formula =  abundance ~ land_use*year_ct + cos_td_rad + (1|site), family = poisson)
+drop1(me1)
+```
+
+drop interaction land use * year
+
+```{r}
+me1 <- glmer(data = P.anal, formula =  abundance ~ land_use + year_ct + cos_td_rad + (1|site), family = poisson)
+drop1(me1)
+```
+
+drop year.
+
+```{r}
+me1 <- glmer(data = P.anal, formula =  abundance ~ land_use + cos_td_rad + (1|site), family = poisson)
+drop1(me1)
+```
+
+drop cosine.
+
+```{r}
+me1 <- glmer(data = P.anal, formula =  abundance ~ land_use + (1|site), family = poisson)
+drop1(me1)
+```
+
+final model includes only land use:
+
+```{r}
+summary(me1)
+ranef(me1)
+dotplot(ranef(me1, condVar=TRUE))
+plot(me1)
+qqmath(me1)
+# scale location plot
+plot(me1, sqrt(abs(resid(.))) ~ fitted(.),
+     type = c("p", "smooth"),
+     main="scale-location",
+     par.settings = list(plot.line =
+                           list(alpha=1, col = "red",
+                                lty = 1, lwd = 2)))
+```
+
+
+```{r}
+summ(me1, digits = 3)
+
+plot_model_effect(P.anal=P.anal, m=me1, eff2plot="land_use", plot_points = TRUE, plot_residuals = FALSE, export_plot=TRUE, ylabel = NULL, fontname = SoN_fontname, fontsize=22, pdf_width=160, outpath = output_path)
+
+effplot_land_use <- effect_plot(model = me1, data=P.anal, pred = land_use, interval = T, plot.points = T,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",
+                           main.title = "effect of land use",
+                           line.colors = "black", point.alpha = 0.25)
+effplot_land_use$layers[[2]]$geom_params$width <- 0.4
+effplot_land_use
+```
+
+## plot observations on ternary plot
+
+```{r}
+Aloess <- A[grepl("Loess",unit)]
+Aloess[,.(number_of_sites = uniqueN(site),number_of_plots=uniqueN(plot_name)),keyby = .(land_use,year)]
+```
+
+### randomly choose 9 plots from bedouin agriculture for each year in the range 2016-2020
+
+```{r}
+Aloess[year>2012,.(tot_plots = uniqueN(paste(plot_name,year,sep = "_"))), keyby = land_use]
+Aloess[year>2012,.(abundance = sum(count_under_250)), keyby = .(land_use, SciName)]
+bedo_plot_year <- unique(Aloess[grepl("Bedo",land_use),.(plot_name,year)][order(year,plot_name)])
+bedo_plot_nums_by_year <- bedo_plot_year[,.N,year][,N]
+# bedo_plot_idx_2_keep <- numeric()
+# for (i in seq(1:length(bedo_plot_nums_by_year))) {
+#   bedo_plot_idx_2_keep <- c(bedo_plot_idx_2_keep,sample(1:bedo_plot_nums_by_year[i],9)+sum(c(0,bedo_plot_nums_by_year)[1:i]))
+# }
+
+# fix the randomly chosen plots for reproducibility
+bedo_plot_idx_2_keep <- c(1,2,3,4,5,6,7,8,9,10,11,12,14,15,17,18,19,20,23,24,25,26,27,29,30,31,32,33,34,35,36,38,39,40,43,44)
+
+# generate table of observations for years 2014-2020
+Al2 <- Aloess[year>2012 & !( grepl("Bedo",land_use) & !( paste(plot_name,year,sep = "_") %in% bedo_plot_year[bedo_plot_idx_2_keep, paste(plot_name,year,sep = "_")] ) ) ]
+
+# keep only observations under 250m
+Al2 <- Al2[count_under_250>0]
+
+# just checking
+#Al2[,.(number_of_sites = uniqueN(site),number_of_plots=uniqueN(plot_name)),keyby = .(land_use,year)]
+
+obs_prop <-
+  as.data.table(
+  janitor::clean_names(
+    dcast(Al2,HebName + SciName ~ land_use, fun.aggregate = sum, value.var = "count_under_250")
+  ))
+land_use_cols <- names(obs_prop)[3:5]
+obs_prop[,total_count:=apply(X = .SD, MARGIN = 1, FUN = sum), .SDcols = land_use_cols]
+
+# remove species with less than 3 individuals
+obs_prop <- obs_prop[total_count>=6]
+
+# compute proportions
+obs_prop[,paste(land_use_cols,"prop",sep = "_"):=lapply(X = .SD, FUN = \(x) x/total_count*100), .SDcols = land_use_cols]
+
+write.csv(x = obs_prop[,.(bedouin_agriculture_prop, kkl_plantings_prop, loess_prop, sci_name, heb_name)],file = "../data/loess_species_proportions_by_land_use.csv",row.names = FALSE)
+
+```
+### The ternary plot was eventually done on a separate script
+
+## Test differences among land uses for abundance of batha specialists:
+
+```{r}
+emm_land_use <- emmeans(object = me1, ~land_use)
+print(emm_land_use)
+test_results_land_use <- test(pairs(emm_land_use), by=NULL, adjust="fdr")
+print(test_results_land_use)
+#Loess - KKL
+(exp(1.78)/exp(1.22)) - 1
+#Loess - Agri
+(exp(1.78)/exp(1.38)) - 1
+#Agri - KKL
+(exp(1.38)/exp(1.22)) - 1
+
+emm_land_use_dt <- as.data.table(emm_land_use)
+iv_loess_abs <- emm_land_use_dt[land_use=="Loess",exp(emmean)]
+print(iv_loess_abs)
+iv_kkl_abs <- emm_land_use_dt[grepl("KKL",land_use),exp(emmean)]
+print(iv_kkl_abs)
+iv_bedo_abs <- emm_land_use_dt[grepl("Bedo",land_use),exp(emmean)]
+print(iv_bedo_abs)
+iv_loess_kkl_rel <- (iv_loess_abs/iv_kkl_abs)-1
+print(iv_loess_kkl_rel)
+iv_bedo_kkl_rel <- iv_bedo_abs/iv_kkl_abs-1
+print(iv_bedo_kkl_rel)
+iv_loess_bedo_rel <- iv_loess_abs/iv_bedo_abs-1
+print(iv_loess_bedo_rel)
+
+```
+
+**Significant difference in total abundance of BATHA SPECIALISTS per plot among all three land uses -  Loess (`r iv_loess_abs`), Bedouin agriculture (`r iv_bedo_abs`) and KKL Plantings (`r iv_kkl_abs`).**
+
+**Total abundance of a Bedouin agriculture plot is, on average, `r iv_bedo_kkl_rel*100`% higher compared to a KKL plantings plot (P=0.205); natural loess is `r iv_loess_kkl_rel*100`% higher compared to KKL plantings (P<0.001); natural loess is `r iv_loess_bedo_rel*100`% higher compared to Bedouin agriculture (P=0.001).**
+
+**No general temporal trend found, nor such a separate trend for the different land uses**
+
+
+## Test whether there is a temporal trend for the proportion of endangered species, without filtering rare species
+
+
+```{r}
+tra[,endang:=ConservationCodeIL2018_ordinal>=2]
+spec_names_endang <- as.character(tra[endang==TRUE,SciName])
+P_endang <- copy(abu_by_spp)[grepl("Loess",unit)]
+P_endang[,`:=`(richness = apply(.SD,1,(\(x) sum(x>0))),
+               abundance = apply(.SD,1,sum)),
+         .SDcols = as.character(unique(A$SciName))]
+P_endang[,`:=`(richness_endang = apply(.SD,1,(\(x) sum(x>0))),
+               abundance_endang = apply(.SD,1,sum)),
+         .SDcols = spec_names_endang][,prop_rich_endang:=richness_endang/richness]
+P_endang <- P_endang[,.SD,.SDcols = c(col_names,"prop_rich_endang", "richness_endang","richness")][
+  ,`:=`(year=factor(year), land_use=factor(land_use, levels = c("Loess","Bedouin Agriculture","KKL Plantings")))][
+    order(unit,subunit,year_ct, site, settlements, agriculture, habitat, dunes,land_use,point_name)]
+
+P.anal <- P_endang
+print("PROPORTION OF ENDANGERED SPECIES, INCLUDING RARE SPECIES")
+plot_alpha_diversity(P.anal, x_val = "land_use", y_val = "prop_rich_endang", ylab_val = "proportion of endangered species", xlab_val = "land use")
+
+dotchart(P.anal$prop_rich_endang, groups = factor(paste(P.anal$land_use,P.anal$year, sep = "_")))
+```
+
+
+```{r}
+me0b <- glmer(data = P.anal, formula =  prop_rich_endang ~ land_use*year_ct + cos_td_rad + sin_td_rad + (1|site), family = binomial, weights = richness)
+m0b <- glm(data = P.anal, formula =  prop_rich_endang ~ land_use*year_ct + cos_td_rad + sin_td_rad + site, family = binomial, weights = richness)
+m0qb <- glm(data = P.anal, formula =  prop_rich_endang ~ land_use*year_ct + cos_td_rad + sin_td_rad + site, family = quasibinomial, weights = richness)
+# m0p <- glm(data = P.anal, formula =  richness_endang ~ land_use*year_ct + cos_td_rad + sin_td_rad + site, family =poisson, offset = richness)
+# m0qp <- glm(data = P.anal, formula =  richness_endang ~ land_use*year_ct + cos_td_rad + sin_td_rad + site, family =quasipoisson, offset = richness)
+```
+
+mixed model did not converge.
+
+```{r}
+summary(m0b)
+plot(m0b, which = 1:4)
+summary(m0qb)
+plot(m0qb, which = 1:4)
+```
+
+dispersion parameter is different than 1, hence use quasibinomial.
+BUT: AIC undefined for quasibinomial, use binomial.
+
+```{r}
+m1 <- step(m0b)
+```
+
+final model includes no interaction, only year and land use.
+
+```{r}
+summary(m1)
+plot(m1, which = 1:4)
+```
+
+remove observation 100, re-fit
+
+```{r}
+P.anal2 <- P.anal[!100]
+m1 <- glm(formula = prop_rich_endang ~ land_use + year_ct, family = binomial, data = P.anal2, weights = richness)
+summary(m1)
+plot(m1, which = 1:4)
+```
+
+
+```{r}
+effplot_land_use <- effect_plot(model = m1, data=P.anal2, pred = land_use, interval = T, plot.points = F,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",
+                           main.title = "effect of land use",
+                           line.colors = "black", point.alpha = 0.25)
+effplot_land_use$layers[[2]]$geom_params$width <- 0.4
+effplot_land_use
+
+effplot_year <- effect_plot(model = m1, data=P.anal2, pred = year_ct, interval = T, plot.points = F,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",
+                           main.title = "effect of year",
+                           line.colors = "black", point.alpha = 0.25)
+effplot_year
+```
+
+Test for pairwise differences among levels of land use, apply FDR correction for multiple comparisons.
+
+```{r}
+emm_land_use <- emmeans(object = m1, ~land_use + year_ct)
+test_results_land_use <- test(pairs(emm_land_use, by="year_ct"), by=NULL, adjust="fdr")
+print(test_results_land_use)
+```
+
+## Test whether there is a temporal trend for the proportion of batha specialist species, without filtering rare species
+
+
+```{r}
+spec_names_batha <- as.character(tra[batha_only==TRUE,SciName])
+P_batha <- copy(abu_by_spp)[grepl("Loess",unit)]
+P_batha[,`:=`(richness = apply(.SD,1,(\(x) sum(x>0))),
+               abundance = apply(.SD,1,sum)),
+         .SDcols = as.character(unique(A$SciName))]
+P_batha[,`:=`(richness_batha = apply(.SD,1,(\(x) sum(x>0))),
+               abundance_batha = apply(.SD,1,sum)),
+         .SDcols = spec_names_batha][,prop_rich_batha:=richness_batha/richness]
+P_batha[,`:=`(richness_batha_endang = apply(.SD,1,(\(x) sum(x>0)))),
+         .SDcols = intersect(spec_names_batha,spec_names_endang)][,prop_rich_batha_endang:=richness_batha_endang/richness]
+P_batha <- P_batha[,.SD,.SDcols = c(col_names,"prop_rich_batha","prop_rich_batha_endang", "richness_batha", "richness_batha_endang", "richness")][
+  ,`:=`(year=factor(year), land_use=factor(land_use, levels = c("Loess","Bedouin Agriculture","KKL Plantings")))][
+    order(unit,subunit,year_ct, site, settlements, agriculture, habitat, dunes,land_use,point_name)]
+
+P.anal <- P_batha
+print("PROPORTION OF BATHA SPECIALIST SPECIES, INCLUDING RARE SPECIES")
+plot_alpha_diversity(P.anal, x_val = "land_use", y_val = "prop_rich_batha", ylab_val = "proportion of batha specialist species", xlab_val = "land use")
+
+dotchart(P.anal$prop_rich_batha, groups = factor(paste(P.anal$land_use,P.anal$year, sep = "_")))
+```
+
+
+```{r}
+me0b <- glmer(data = P.anal, formula =  prop_rich_batha ~ land_use*year_ct + cos_td_rad + sin_td_rad + (1|site), family = binomial, weights = richness)
+m0b <- glm(data = P.anal, formula =  prop_rich_batha ~ land_use*year_ct + cos_td_rad + sin_td_rad + site, family = binomial, weights = richness)
+m1b <- glm(data = P.anal, formula =  prop_rich_batha ~ land_use*year_ct + cos_td_rad + sin_td_rad, family = binomial, weights = richness)
+m0qb <- glm(data = P.anal, formula =  prop_rich_batha ~ land_use*year_ct + cos_td_rad + sin_td_rad + site, family = quasibinomial, weights = richness)
+```
+
+all models converged.
+
+```{r}
+summary(me0b)
+ranef(me0b)
+dotplot(ranef(me0b, condVar=TRUE))
+plot(me0b)
+qqmath(me0b)
+# scale location plot
+plot(me0b, sqrt(abs(resid(.))) ~ fitted(.),
+     type = c("p", "smooth"),
+     main="scale-location",
+     par.settings = list(plot.line =
+                           list(alpha=1, col = "red",
+                                lty = 1, lwd = 2)))
+summary(m0b)
+plot(m0b, which = 1:4)
+summary(m1b)
+plot(m1b, which = 1:4)
+summary(m0qb)
+plot(m0qb, which = 1:4)
+
+AIC(me0b,m0b,m1b,m0qb)
+```
+
+model excluding site has lower AIC compared to regular binomial glm and binomial mixed model, hence use model without site. binomial models have better QQ plots (range of residuals) compared to quasibinomial.
+
+```{r}
+m1 <- step(m1b)
+```
+
+final model includes only land use.
+
+```{r}
+summary(m1)
+plot(m1, which = 1:4)
+```
+
+
+```{r}
+effplot_land_use <- effect_plot(model = m1, data=P.anal, pred = land_use, interval = T, plot.points = F,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",
+                           main.title = "effect of land use",
+                           line.colors = "black", point.alpha = 0.25)
+effplot_land_use$layers[[2]]$geom_params$width <- 0.4
+effplot_land_use
+```
+
+Test for pairwise differences among levels of land use, apply FDR correction for multiple comparisons.
+
+```{r}
+emm_land_use <- emmeans(object = m1, ~land_use)
+test_results_land_use <- emmeans::test(pairs(emm_land_use), by=NULL, adjust="fdr")
+print(test_results_land_use)
+```
+
+### Loess land use has significantly higher proportion of batha specialist species compared to KKL plantings and Bedouin agriculture (the latter two do not differ)
+
+## Test whether there is a temporal trend for the proportion of batha specialist endangered species, without filtering rare species
+
+```{r}
+print("PROPORTION OF BATHA SPECIALIST SPECIES WHICH ARE ALSO ENDAGERED, INCLUDING RARE SPECIES")
+plot_alpha_diversity(P.anal, x_val = "land_use", y_val = "prop_rich_batha_endang", ylab_val = "proportion of batha specialist endangered", xlab_val = "land use")
+
+dotchart(P.anal$prop_rich_batha_endang, groups = factor(paste(P.anal$land_use,P.anal$year, sep = "_")))
+```
+
+It appears there is quasi-complete separation in the data: the land use variable predicts almost perfectly the proportion of endangered and batha specialist species:
+ - In bedouin agriculture and KKL plantings the proportion is always 0 (except for a single plot in KKL plantings)
+ - In natural loess the proportion is 0-0.5
+As it is not possible to analyze a category with zero observations with standard logistic glm, the categories of
+KKL plantings and Bedouin agriculture will be unified.
+
+```{r}
+P.anal[,is_loess:=factor(ifelse(land_use=="Loess","Loess","Bedouin agriculture / KKL plantings"),
+                         levels = c("Loess","Bedouin agriculture / KKL plantings"))]
+me0b <- glmer(data = P.anal, formula =  prop_rich_batha_endang ~ is_loess*year_ct + cos_td_rad + sin_td_rad + (1|site), family = binomial, weights = richness)
+m0b <- glm(data = P.anal, formula =  prop_rich_batha_endang ~ is_loess*year_ct + cos_td_rad + sin_td_rad + site, family = binomial, weights = richness)
+m1b <- glm(data = P.anal, formula =  prop_rich_batha_endang ~ is_loess*year_ct + cos_td_rad + sin_td_rad, family = binomial, weights = richness)
+m0qb <- glm(data = P.anal, formula =  prop_rich_batha_endang ~ is_loess*year_ct + cos_td_rad + sin_td_rad + site, family = quasibinomial, weights = richness)
+AIC(me0b,m0b,m1b,m0qb)
+```
+
+compare binomial and quasibinomial models without site variable
+
+```{r}
+m1qb <- glm(data = P.anal, formula =  prop_rich_batha_endang ~ is_loess*year_ct + cos_td_rad + sin_td_rad, family = quasibinomial, weights = richness)
+summary(m1b)
+plot(m1b, which = 1:4)
+summary(m1qb)
+plot(m1qb, which = 1:4)
+```
+
+Regular binomial glm and quasibinomial glm yield similar diagnostic plots, qb has somewhat lower residuals, however cannot perform AIC based model selection using qb, therefore stick with binomial glm.
+
+
+```{r}
+m1 <- step(m1b)
+```
+
+final model includes only land use and year.
+
+```{r}
+summary(m1)
+plot(m1, which = 1:4)
+```
+
+
+```{r}
+effplot_land_use <- plot_model_effect(P.anal = P.anal, m = m1, eff2plot = "is_loess", export_plot = TRUE, fontname = SoN_fontname, outpath = output_path, plot_points = TRUE, ylabel = "מתוך סך המינים בחלקה\nשיעור מינים מאפייני בתה בסיכון", point_alpha = 0.15, horz_jitter = 0.2)
+
+effplot_year <- plot_model_effect(P.anal = P.anal, m = m1, eff2plot = "year_ct", export_plot = TRUE, fontname = SoN_fontname, outpath = output_path, plot_points = TRUE, ylabel = "מתוך סך המינים בחלקה\nשיעור מינים מאפייני בתה בסיכון", point_alpha = 0.15, horz_jitter = 0.2)
+prop_sta_fin <- predict(object = m1, newdata = data.table(year_ct=c(0,8), is_loess=rep("Loess",2)), type = "response")
+iv_prop_rel <- abs((diff(prop_sta_fin))/prop_sta_fin[1])
+```
+
+**Species defined as both endangered and batha specialist are seen almost entirely in the natural loess plots.**
+**In addition, there is a significant decline in the probability of observation of such species of `r iv_prop_rel*100`% over the 8 years of monitoring.**
+
+```{r export manyglm p-values}
+write.csv(coefp[,.(SciName,HebName,year_ct.p, land_use.p)], file = "../output/loess/species_composition_p_values.csv", row.names = F, fileEncoding = "MS-HEBR")
+```
+
+### Session information
+
+```{r}
+session_info()
+```

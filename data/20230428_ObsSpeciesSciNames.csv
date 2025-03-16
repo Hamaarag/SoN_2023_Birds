@@ -1,0 +1,252 @@
+TAXON_ORDER,CATEGORY,SPECIES_CODE,SciName,SciName_updated,PRIMARY_COM_NAME,ORDER1,FAMILY,SPECIES_GROUP,REPORT_AS
+7921,species,levspa1,Accipiter brevipes,Accipiter brevipes,Levant Sparrowhawk,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+8062,species,norgos,Accipiter gentilis,Accipiter gentilis,Northern Goshawk,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+8020,species,eurspa1,Accipiter nisus,Accipiter nisus,Eurasian Sparrowhawk,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+27283,species,vibsta4,Acridotheres burmannicus,Acridotheres leucocephalus,Vinous-breasted Myna,Passeriformes,Sturnidae (Starlings),Starlings and Mynas,NA
+27283,species,vibsta4,Acridotheres burmannicus/leucocephalus,Acridotheres leucocephalus,Vinous-breasted Myna,Passeriformes,Sturnidae (Starlings),Starlings and Mynas,NA
+27283,species,vibsta4,Acridotheres leucocephalus,Acridotheres leucocephalus,Vinous-breasted Myna,Passeriformes,Sturnidae (Starlings),Starlings and Mynas,NA
+27278,species,commyn,Acridotheres tristis,Acridotheres tristis,Common Myna,Passeriformes,Sturnidae (Starlings),Starlings and Mynas,NA
+23137,species,sedwar1,Acrocephalus schoenobaenus,Acrocephalus schoenobaenus,Sedge Warbler,Passeriformes,Acrocephalidae (Reed Warblers and Allies),Reed Warblers and Allies,NA
+23151,species,eurwar1,Acrocephalus scirpaceus,Acrocephalus scirpaceus,Common Reed Warbler,Passeriformes,Acrocephalidae (Reed Warblers and Allies),Reed Warblers and Allies,NA
+22216,species,skylar,Alauda arvensis,Alauda arvensis,Eurasian Skylark,Passeriformes,Alaudidae (Larks),Larks,NA
+22175,species,mstlar1,Alaudala rufescens,Alaudala rufescens,Mediterranean Short-toed Lark,Passeriformes,Alaudidae (Larks),Larks,NA
+22175,species,mstlar1,Alaudala rufescens/heinei,Alaudala rufescens,Mediterranean Short-toed Lark,Passeriformes,Alaudidae (Larks),Larks,NA
+22175,species,mstlar1,Calandrella rufescens,Alaudala rufescens,Mediterranean Short-toed Lark,Passeriformes,Alaudidae (Larks),Larks,NA
+22175,species,mstlar1,Alaudala heinei,Alaudala rufescens,Mediterranean Short-toed Lark,Passeriformes,Alaudidae (Larks),Larks,NA
+1680,species,chukar,Alectoris chukar,Alectoris chukar,Chukar,Galliformes,"Phasianidae (Pheasants, Grouse, and Allies)","Grouse, Quail, and Allies",NA
+21864,species,batlar1,Ammomanes cinctura,Ammomanes cinctura,Bar-tailed Lark,Passeriformes,Alaudidae (Larks),Larks,NA
+21869,species,deslar1,Ammomanes deserti,Ammomanes deserti,Desert Lark,Passeriformes,Alaudidae (Larks),Larks,NA
+1631,species,sanpar1,Ammoperdix heyi,Ammoperdix heyi,Sand Partridge,Galliformes,"Phasianidae (Pheasants, Grouse, and Allies)","Grouse, Quail, and Allies",NA
+505,species,mallar3,Anas platyrhynchos,Anas platyrhynchos,Mallard,Anseriformes,"Anatidae (Ducks, Geese, and Waterfowl)",Waterfowl,NA
+31160,species,tawpip1,Anthus campestris,Anthus campestris,Tawny Pipit,Passeriformes,Motacillidae (Wagtails and Pipits),Wagtails and Pipits,NA
+31215,species,retpip,Anthus cervinus,Anthus cervinus,Red-throated Pipit,Passeriformes,Motacillidae (Wagtails and Pipits),Wagtails and Pipits,NA
+31198,species,meapip1,Anthus pratensis,Anthus pratensis,Meadow Pipit,Passeriformes,Motacillidae (Wagtails and Pipits),Wagtails and Pipits,NA
+31133,species,lobpip1,Anthus similis,Anthus similis,Long-billed Pipit,Passeriformes,Motacillidae (Wagtails and Pipits),Wagtails and Pipits,NA
+31216,species,watpip1,Anthus spinoletta,Anthus spinoletta,Water Pipit,Passeriformes,Motacillidae (Wagtails and Pipits),Wagtails and Pipits,NA
+31202,species,trepip,Anthus trivialis,Anthus trivialis,Tree Pipit,Passeriformes,Motacillidae (Wagtails and Pipits),Wagtails and Pipits,NA
+4082,species,litswi1,Apus affinis,Apus affinis,Little Swift,Caprimulgiformes,Apodidae (Swifts),Swifts,NA
+4041,species,comswi,Apus apus,Apus apus,Common Swift,Caprimulgiformes,Apodidae (Swifts),Swifts,NA
+4024,species,alpswi1,Apus melba,Apus melba,Alpine Swift,Caprimulgiformes,Apodidae (Swifts),Swifts,NA
+4024,species,alpswi1,Tachymarptis melba,Apus melba,Alpine Swift,Caprimulgiformes,Apodidae (Swifts),Swifts,NA
+4048,species,palswi3,Apus pallidus,Apus pallidus,Pallid Swift,Caprimulgiformes,Apodidae (Swifts),Swifts,NA
+7799,species,goleag,Aquila chrysaetos,Aquila chrysaetos,Golden Eagle,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7811,species,boneag2,Aquila fasciata,Aquila fasciata,Bonelli's Eagle,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7811,species,boneag2,Hieraaetus fasciatus,Aquila fasciata,Bonelli's Eagle,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7792,species,steeag1,Aquila nipalensis,Aquila nipalensis,Steppe Eagle,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7299,species,graher1,Ardea cinerea,Ardea cinerea,Gray Heron,Pelecaniformes,"Ardeidae (Herons, Egrets, and Bitterns)","Herons, Ibis, and Allies",NA
+7375,species,squher1,Ardeola ralloides,Ardeola ralloides,Squacco Heron,Pelecaniformes,"Ardeidae (Herons, Egrets, and Bitterns)","Herons, Ibis, and Allies",NA
+26072,species,arabab1,Argya squamiceps,Argya squamiceps,Arabian Babbler,Passeriformes,Leiothrichidae (Laughingthrushes and Allies),Laughingthrushes and Allies,NA
+26072,species,arabab1,Turdoides squamiceps,Argya squamiceps,Arabian Babbler,Passeriformes,Leiothrichidae (Laughingthrushes and Allies),Laughingthrushes and Allies,NA
+8819,species,litowl1,Athene noctua,Athene noctua,Little Owl,Strigiformes,Strigidae (Owls),Owls,NA
+7370,species,categr,Bubulcus ibis,Bubulcus ibis,Cattle Egret,Pelecaniformes,"Ardeidae (Herons, Egrets, and Bitterns)","Herons, Ibis, and Allies",NA
+31606,species,trufin2,Bucanetes githagineus,Bucanetes githagineus,Trumpeter Finch,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+5663,species,eutkne1,Burhinus oedicnemus,Burhinus oedicnemus,Eurasian Thick-knee,Charadriiformes,Burhinidae (Thick-knees),Shorebirds,NA
+8262,species,combuz1,Buteo buteo,Buteo buteo,Common Buzzard,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+8268,issf,combuz5,Buteo buteo vulpinus,Buteo buteo vulpinus/menetriesi,Common Buzzard (Steppe),Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",combuz1
+8268,issf,combuz5,Buteo buteo vulpinus/menetriesi,Buteo buteo vulpinus/menetriesi,Common Buzzard (Steppe),Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",combuz1
+8284,species,lolbuz1,Buteo rufinus,Buteo rufinus,Long-legged Buzzard,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+22132,species,gstlar1,Calandrella brachydactyla,Calandrella brachydactyla,Greater Short-toed Lark,Passeriformes,Alaudidae (Larks),Larks,NA
+31889,species,eurgol,Carduelis carduelis,Carduelis carduelis,European Goldfinch,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+30991,species,palroc1,Carpospiza brachydactyla,Carpospiza brachydactyla,Pale Rockfinch,Passeriformes,Passeridae (Old World Sparrows),Old World Sparrows,NA
+30991,species,palroc1,Petronia brachydactyla,Carpospiza brachydactyla,Pale Rockfinch,Passeriformes,Passeridae (Old World Sparrows),Old World Sparrows,NA
+23657,species,rerswa1,Cecropis daurica,Cecropis daurica,Red-rumped Swallow,Passeriformes,Hirundinidae (Swallows),Martins and Swallows,NA
+23657,species,rerswa1,Hirundo daurica,Cecropis daurica,Red-rumped Swallow,Passeriformes,Hirundinidae (Swallows),Martins and Swallows,NA
+28337,species,rutscr1,Cercotrichas galactotes,Cercotrichas galactotes,Rufous-tailed Scrub-Robin,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+28337,species,rutscr1,Erythropygia galactotes,Cercotrichas galactotes,Rufous-tailed Scrub-Robin,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+24559,species,cetwar1,Cettia cetti,Cettia cetti,Cetti's Warbler,Passeriformes,Scotocercidae (Bush Warblers and Allies),Bush Warblers and Allies,NA
+2901,species,macbus1,Chlamydotis macqueeni,Chlamydotis macqueenii,Macqueen's Bustard,Otidiformes,Otididae (Bustards),Bustards,NA
+2901,species,macbus1,Chlamydotis macqueenii,Chlamydotis macqueenii,Macqueen's Bustard,Otidiformes,Otididae (Bustards),Bustards,NA
+31674,species,eurgre1,Carduelis chloris,Chloris chloris,European Greenfinch,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+31674,species,eurgre1,Chloris chloris,Chloris chloris,European Greenfinch,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+7061,species,whisto1,Ciconia ciconia,Ciconia ciconia,White Stork,Ciconiiformes,Ciconiidae (Storks),Storks,NA
+7053,species,blasto1,Ciconia nigra,Ciconia nigra,Black Stork,Ciconiiformes,Ciconiidae (Storks),Storks,NA
+29767,species,palsun2,Cinnyris osea,Cinnyris osea,Palestine Sunbird,Passeriformes,Nectariniidae (Sunbirds and Spiderhunters),Sunbirds and Spiderhunters,NA
+29767,species,palsun2,Nectarinia osea,Cinnyris osea,Palestine Sunbird,Passeriformes,Nectariniidae (Sunbirds and Spiderhunters),Sunbirds and Spiderhunters,NA
+7721,species,shteag1,Circaetus gallicus,Circaetus gallicus,Short-toed Snake-Eagle,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7857,species,wemhar1,Circus aeruginosus,Circus aeruginosus,Eurasian Marsh-Harrier,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7872,species,norhar1,Circus cyaneus,Circus cyaneus,Hen Harrier,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7875,species,palhar1,Circus macrourus,Circus macrourus,Pallid Harrier,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7878,species,monhar1,Circus pygargus,Circus pygargus,Montagu's Harrier,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+23006,species,zitcis1,Cisticola juncidis,Cisticola juncidis,Zitting Cisticola,Passeriformes,Cisticolidae (Cisticolas and Allies),Cisticolas and Allies,NA
+3173,species,grscuc1,Clamator glandarius,Clamator glandarius,Great Spotted Cuckoo,Cuculiformes,Cuculidae (Cuckoos),Cuckoos,NA
+7779,species,grseag1,Aquila clanga,Clanga clanga,Greater Spotted Eagle,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7779,species,grseag1,Clanga clanga,Clanga clanga,Greater Spotted Eagle,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7777,species,leseag1,Aquila pomarina,Clanga pomarina,Lesser Spotted Eagle,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7777,species,leseag1,Clanga pomarina,Clanga pomarina,Lesser Spotted Eagle,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+31434,species,hawfin,Coccothraustes coccothraustes,Coccothraustes coccothraustes,Hawfinch,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+1856,species,rocpig,Columba livia,Columba livia,Rock Pigeon,Columbiformes,Columbidae (Pigeons and Doves),Pigeons and Doves,NA
+1871,domestic,rocpig1,Columba livia (Feral Pigeon),Columba livia (Feral Pigeon),Rock Pigeon (Feral Pigeon),Columbiformes,Columbidae (Pigeons and Doves),Pigeons and Doves,rocpig
+1871,domestic,rocpig1,Columba livia (domesticus),Columba livia (Feral Pigeon),Rock Pigeon (Feral Pigeon),Columbiformes,Columbidae (Pigeons and Doves),Pigeons and Doves,rocpig
+1888,species,cowpig1,Columba palumbus,Columba palumbus,Common Wood-Pigeon,Columbiformes,Columbidae (Pigeons and Doves),Pigeons and Doves,NA
+10032,species,eurrol1,Coracias garrulus,Coracias garrulus,European Roller,Coraciiformes,Coraciidae (Rollers),"Bee-eaters, Rollers, and Allies",NA
+21121,species,comrav,Corvus corax,Corvus corax,Common Raven,Passeriformes,"Corvidae (Crows, Jays, and Magpies)","Jays, Magpies, Crows, and Ravens",NA
+21076,species,hoocro1,Corvus cornix,Corvus cornix,Hooded Crow,Passeriformes,"Corvidae (Crows, Jays, and Magpies)","Jays, Magpies, Crows, and Ravens",NA
+21010,species,eurjac,Corvus monedula,Corvus monedula,Eurasian Jackdaw,Passeriformes,"Corvidae (Crows, Jays, and Magpies)","Jays, Magpies, Crows, and Ravens",NA
+21115,species,brnrav1,Corvus ruficollis,Corvus ruficollis,Brown-necked Raven,Passeriformes,"Corvidae (Crows, Jays, and Magpies)","Jays, Magpies, Crows, and Ravens",NA
+1659,species,comqua1,Coturnix coturnix,Coturnix coturnix,Common Quail,Galliformes,"Phasianidae (Pheasants, Grouse, and Allies)","Grouse, Quail, and Allies",NA
+3396,species,comcuc,Cuculus canorus,Cuculus canorus,Common Cuckoo,Cuculiformes,Cuculidae (Cuckoos),Cuckoos,NA
+24810,species,grewhi1,Curruca communis,Curruca communis,Greater Whitethroat,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24810,species,grewhi1,Sylvia communis,Curruca communis,Greater Whitethroat,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24815,species,spewar2,Curruca conspicillata,Curruca conspicillata,Spectacled Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24815,species,spewar2,Sylvia conspicillata,Curruca conspicillata,Spectacled Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24782,species,eaowar2,Curruca crassirostris,Curruca crassirostris,Eastern Orphean Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24782,species,eaowar2,Sylvia crassirostris,Curruca crassirostris,Eastern Orphean Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24753,species,leswhi4,Curruca curruca,Curruca curruca,Lesser Whitethroat,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24753,species,leswhi4,Sylvia curruca,Curruca curruca,Lesser Whitethroat,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24774,species,reswar1,Curruca leucomelaena,Curruca leucomelaena,Arabian Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24774,species,reswar1,Sylvia leucomelaena,Curruca leucomelaena,Arabian Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24799,species,sarwar1,Curruca melanocephala,Curruca melanocephala,Sardinian Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24799,species,sarwar1,Sylvia melanocephala,Curruca melanocephala,Sardinian Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24798,species,cypwar1,Curruca melanothorax,Curruca melanothorax,Cyprus Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24798,species,cypwar1,Sylvia melanothorax,Curruca melanothorax,Cyprus Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24736,species,barwar1,Curruca nisoria,Curruca nisoria,Barred Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24736,species,barwar1,Sylvia nisoria,Curruca nisoria,Barred Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24797,species,ruewar1,Curruca ruppeli,Curruca ruppeli,Rüppell's Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24797,species,ruewar1,Sylvia rueppelli,Curruca ruppeli,Rüppell's Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24797,species,ruewar1,Sylvia ruppeli,Curruca ruppeli,Rüppell's Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+6217,species,crccou1,Cursorius cursor,Cursorius cursor,Cream-colored Courser,Charadriiformes,Glareolidae (Pratincoles and Coursers),Shorebirds,NA
+23729,species,cohmar1,Delichon urbicum,Delichon urbicum,Common House-Martin,Passeriformes,Hirundinidae (Swallows),Martins and Swallows,NA
+11056,species,syrwoo1,Dendrocopos syriacus,Dendrocopos syriacus,Syrian Woodpecker,Piciformes,Picidae (Woodpeckers),Woodpeckers,NA
+7340,species,litegr,Egretta garzetta,Egretta garzetta,Little Egret,Pelecaniformes,"Ardeidae (Herons, Egrets, and Bitterns)","Herons, Ibis, and Allies",NA
+7575,species,bkskit1,Elanus caeruleus,Elanus caeruleus,Black-winged Kite,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+32078,species,crebun2,Emberiza caesia,Emberiza caesia,Cretzschmar's Bunting,Passeriformes,Emberizidae (Old World Buntings),Old World Buntings,NA
+32031,species,corbun1,Emberiza calandra,Emberiza calandra,Corn Bunting,Passeriformes,Emberizidae (Old World Buntings),Old World Buntings,NA
+32031,species,corbun1,Miliaria calandr,Emberiza calandra,Corn Bunting,Passeriformes,Emberizidae (Old World Buntings),Old World Buntings,NA
+32031,species,corbun1,Miliaria calandra,Emberiza calandra,Corn Bunting,Passeriformes,Emberizidae (Old World Buntings),Old World Buntings,NA
+32040,species,rocbun1,Emberiza cia,Emberiza cia,Rock Bunting,Passeriformes,Emberizidae (Old World Buntings),Old World Buntings,NA
+32076,species,ortbun1,Emberiza hortulana,Emberiza hortulana,Ortolan Bunting,Passeriformes,Emberizidae (Old World Buntings),Old World Buntings,NA
+32027,species,blhbun1,Emberiza melanocephala,Emberiza melanocephala,Black-headed Bunting,Passeriformes,Emberizidae (Old World Buntings),Old World Buntings,NA
+28624,species,eurrob1,Erithacus rubecula,Erithacus rubecula,European Robin,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+30419,species,indsil,Euodice malabarica,Euodice malabarica,Indian Silverbill,Passeriformes,Estrildidae (Waxbills and Allies),Estrildids,NA
+30419,species,indsil,Lonchura malabarica,Euodice malabarica,Indian Silverbill,Passeriformes,Estrildidae (Waxbills and Allies),Estrildids,NA
+11729,species,elefal1,Falco eleonorae,Falco eleonorae,Eleonora's Falcon,Falconiformes,Falconidae (Falcons and Caracaras),Falcons and Caracaras,NA
+11662,species,leskes1,Falco naumanni,Falco naumanni,Lesser Kestrel,Falconiformes,Falconidae (Falcons and Caracaras),Falcons and Caracaras,NA
+11793,issf,barfal1,Falco pelegrinoides,Falco peregrinus pelegrinoides,Peregrine Falcon (Barbary),Falconiformes,Falconidae (Falcons and Caracaras),Falcons and Caracaras,perfal
+11793,issf,barfal1,Falco peregrinus pelegrinoides,Falco peregrinus pelegrinoides,Peregrine Falcon (Barbary),Falconiformes,Falconidae (Falcons and Caracaras),Falcons and Caracaras,perfal
+11742,species,eurhob,Falco subbuteo,Falco subbuteo,Eurasian Hobby,Falconiformes,Falconidae (Falcons and Caracaras),Falcons and Caracaras,NA
+11663,species,eurkes,Falco tinnunculus,Falco tinnunculus,Eurasian Kestrel,Falconiformes,Falconidae (Falcons and Caracaras),Falcons and Caracaras,NA
+28935,species,colfly1,Ficedula albicollis,Ficedula albicollis,Collared Flycatcher,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+28928,species,eupfly1,Ficedula hypoleuca,Ficedula hypoleuca,European Pied Flycatcher,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+1571,species,blkfra,Francolinus francolinus,Francolinus francolinus,Black Francolin,Galliformes,"Phasianidae (Pheasants, Grouse, and Allies)","Grouse, Quail, and Allies",NA
+31293,species,comcha,Fringilla coelebs,Fringilla coelebs,Common Chaffinch,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+31315,species,brambl,Fringilla montifringilla,Fringilla montifringilla,Brambling,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+22266,species,crelar1,Galerida cristata,Galerida cristata,Crested Lark,Passeriformes,Alaudidae (Larks),Larks,NA
+5380,species,commoo3,Gallinula chloropus,Gallinula chloropus,Eurasian Moorhen,Gruiformes,"Rallidae (Rails, Gallinules, and Coots)","Rails, Gallinules, and Allies",NA
+20835,species,eurjay1,Garrulus glandarius,Garrulus glandarius,Eurasian Jay,Passeriformes,"Corvidae (Crows, Jays, and Magpies)","Jays, Magpies, Crows, and Ravens",NA
+7677,species,eurgri1,Gyps fulvus,Gyps fulvus,Eurasian Griffon,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+9712,species,whtkin2,Halcyon smyrnensis,Halcyon smyrnensis,White-throated Kingfisher,Coraciiformes,Alcedinidae (Kingfishers),Kingfishers,NA
+7784,species,booeag1,Hieraaetus pennatus,Hieraaetus pennatus,Booted Eagle,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+23124,species,upcwar1,Hippolais languida,Hippolais languida,Upcher's Warbler,Passeriformes,Acrocephalidae (Reed Warblers and Allies),Reed Warblers and Allies,NA
+23125,species,oltwar1,Hippolais olivetorum,Hippolais olivetorum,Olive-tree Warbler,Passeriformes,Acrocephalidae (Reed Warblers and Allies),Reed Warblers and Allies,NA
+23610,species,barswa,Hirundo rustica,Hirundo rustica,Barn Swallow,Passeriformes,Hirundinidae (Swallows),Martins and Swallows,NA
+23110,species,eaowar1,Hippolais pallida,Iduna pallida,Eastern Olivaceous Warbler,Passeriformes,Acrocephalidae (Reed Warblers and Allies),Reed Warblers and Allies,NA
+23110,species,eaowar1,Iduna pallida,Iduna pallida,Eastern Olivaceous Warbler,Passeriformes,Acrocephalidae (Reed Warblers and Allies),Reed Warblers and Allies,NA
+10696,species,eurwry,Jynx torquilla,Jynx torquilla,Eurasian Wryneck,Piciformes,Picidae (Woodpeckers),Woodpeckers,NA
+20526,species,rebshr1,Lanius collurio,Lanius collurio,Red-backed Shrike,Passeriformes,Laniidae (Shrikes),Shrikes,NA
+20592,species,norshr1,Lanius excubitor,Lanius excubitor,Great Gray Shrike,Passeriformes,Laniidae (Shrikes),Shrikes,NA
+20592,species,norshr1,Lanius meridionalis,Lanius excubitor,Great Gray Shrike,Passeriformes,Laniidae (Shrikes),Shrikes,NA
+20610,species,legshr2,Lanius minor,Lanius minor,Lesser Gray Shrike,Passeriformes,Laniidae (Shrikes),Shrikes,NA
+20648,species,masshr1,Lanius nubicus,Lanius nubicus,Masked Shrike,Passeriformes,Laniidae (Shrikes),Shrikes,NA
+20649,species,wooshr1,Lanius senator,Lanius senator,Woodchat Shrike,Passeriformes,Laniidae (Shrikes),Shrikes,NA
+31809,species,eurlin1,Carduelis cannabina,Linaria cannabina,Eurasian Linnet,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+31809,species,eurlin1,Linaria cannabina,Linaria cannabina,Eurasian Linnet,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+23274,species,savwar1,Locustella luscinioides,Locustella luscinioides,Savi's Warbler,Passeriformes,Locustellidae (Grassbirds and Allies),Grassbirds and Allies,NA
+22192,species,woolar1,Lullula arborea,Lullula arborea,Wood Lark,Passeriformes,Alaudidae (Larks),Larks,NA
+28766,species,thrnig1,Luscinia luscinia,Luscinia luscinia,Thrush Nightingale,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+28767,species,comnig1,Luscinia megarhynchos,Luscinia megarhynchos,Common Nightingale,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+28777,species,blueth,Luscinia svecica,Luscinia svecica,Bluethroat,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+22148,species,bimlar1,Melanocorypha bimaculata,Melanocorypha bimaculata,Bimaculated Lark,Passeriformes,Alaudidae (Larks),Larks,NA
+22149,species,callar1,Melanocorypha calandra,Melanocorypha calandra,Calandra Lark,Passeriformes,Alaudidae (Larks),Larks,NA
+10022,species,eubeat1,Merops apiaster,Merops apiaster,European Bee-eater,Coraciiformes,Meropidae (Bee-eaters),"Bee-eaters, Rollers, and Allies",NA
+10001,species,grnbee2,Merops orientalis,Merops cyanophrys,Arabian Green Bee-eater,Coraciiformes,Meropidae (Bee-eaters),"Bee-eaters, Rollers, and Allies",NA
+10001,species,grnbee2,Merops cyanophrys,Merops cyanophrys,Arabian Green Bee-eater,Coraciiformes,Meropidae (Bee-eaters),"Bee-eaters, Rollers, and Allies",NA
+10013,species,bcbeat1,Merops persicus,Merops persicus,Blue-cheeked Bee-eater,Coraciiformes,Meropidae (Bee-eaters),"Bee-eaters, Rollers, and Allies",NA
+7149,species,pygcor2,Microcarbo pygmaeus,Microcarbo pygmaeus,Pygmy Cormorant,Suliformes,Phalacrocoracidae (Cormorants and Shags),Cormorants and Anhingas,NA
+7149,species,pygcor2,Microcarbo pygmeus,Microcarbo pygmaeus,Pygmy Cormorant,Suliformes,Phalacrocoracidae (Cormorants and Shags),Cormorants and Anhingas,NA
+8086,species,blakit1,Milvus migrans,Milvus migrans,Black Kite,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+29020,species,rtrthr1,Monticola saxatilis,Monticola saxatilis,Rufous-tailed Rock-Thrush,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29021,species,burthr,Monticola solitarius,Monticola solitarius,Blue Rock-Thrush,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+31070,species,whiwag,Motacilla alba,Motacilla alba,White Wagtail,Passeriformes,Motacillidae (Wagtails and Pipits),Wagtails and Pipits,NA
+31032,species,eaywag1,Motacilla flava,Motacilla flava,Western Yellow Wagtail,Passeriformes,Motacillidae (Wagtails and Pipits),Wagtails and Pipits,NA
+28196,species,spofly1,Muscicapa striata,Muscicapa striata,Spotted Flycatcher,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+7596,species,egyvul1,Neophron percnopterus,Neophron percnopterus,Egyptian Vulture,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+2157,species,namdov1,Oena capensis,Oena capensis,Namaqua Dove,Columbiformes,Columbidae (Pigeons and Doves),Pigeons and Doves,NA
+29167,species,deswhe1,Oenanthe deserti,Oenanthe deserti,Desert Wheatear,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29236,species,finwhe1,Oenanthe finschii,Oenanthe finschii,Finsch's Wheatear,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29173,species,bkewhe2,Oenanthe hispanica,Oenanthe melanoleuca,Eastern Black-eared Wheatear,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29173,species,bkewhe2,Oenanthe hispanica/melanoleuca,Oenanthe melanoleuca,Eastern Black-eared Wheatear,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29173,species,bkewhe2,Oenanthe melanoleuca,Oenanthe melanoleuca,Eastern Black-eared Wheatear,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29164,species,isawhe1,Oenanthe isabellina,Oenanthe isabellina,Isabelline Wheatear,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29225,species,whtwhe1,Oenanthe leucopyga,Oenanthe leucopyga,White-crowned Wheatear,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29239,species,mouwhe2,Oenanthe lugens,Oenanthe lugens,Mourning Wheatear,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29191,species,blacks1,Cercomela melanura,Oenanthe melanura,Blackstart,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29191,species,blacks1,Oenanthe melanura,Oenanthe melanura,Blackstart,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29166,species,hoowhe1,Oenanthe monacha,Oenanthe monacha,Hooded Wheatear,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29151,species,norwhe,Oenanthe oenanthe,Oenanthe oenanthe,Northern Wheatear,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+27337,species,trista1,Onychognathus tristramii,Onychognathus tristramii,Tristram's Starling,Passeriformes,Sturnidae (Starlings),Starlings and Mynas,NA
+19140,species,eugori2,Oriolus oriolus,Oriolus oriolus,Eurasian Golden Oriole,Passeriformes,Oriolidae (Old World Orioles),Old World Orioles,NA
+7565,species,osprey,Pandion haliaetus,Pandion haliaetus,Osprey,Accipitriformes,Pandionidae (Osprey),"Vultures, Hawks, and Allies",NA
+21672,species,gretit1,Parus major,Parus major,Great Tit,Passeriformes,"Paridae (Tits, Chickadees, and Titmice)","Tits, Chickadees, and Titmice",NA
+30886,species,houspa,Passer domesticus,Passer domesticus,House Sparrow,Passeriformes,Passeridae (Old World Sparrows),Old World Sparrows,NA
+30904,species,spaspa1,Passer hispaniolensis,Passer hispaniolensis,Spanish Sparrow,Passeriformes,Passeridae (Old World Sparrows),Old World Sparrows,NA
+7232,species,grwpel1,Pelecanus onocrotalus,Pelecanus onocrotalus,Great White Pelican,Pelecaniformes,Pelecanidae (Pelicans),Pelicans,NA
+7608,species,euhbuz1,Pernis apivorus,Pernis apivorus,European Honey-buzzard,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7613,species,orihob2,Pernis ptilorhynchus,Pernis ptilorhynchus,Oriental Honey-buzzard,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7613,species,orihob2,Pernis ptilorhyncus,Pernis ptilorhynchus,Oriental Honey-buzzard,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+30983,species,rocpet1,Petronia petronia,Petronia petronia,Rock Sparrow,Passeriformes,Passeridae (Old World Sparrows),Old World Sparrows,NA
+7159,species,grecor,Phalacrocorax carbo,Phalacrocorax carbo,Great Cormorant,Suliformes,Phalacrocoracidae (Cormorants and Shags),Cormorants and Anhingas,NA
+28987,species,blared1,Phoenicurus ochruros,Phoenicurus ochruros,Black Redstart,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+28979,species,comred2,Phoenicurus phoenicurus,Phoenicurus phoenicurus,Common Redstart,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+24317,species,comchi1,Phylloscopus collybita,Phylloscopus collybita,Common Chiffchaff,Passeriformes,Phylloscopidae (Leaf Warblers),Leaf Warblers,NA
+24261,species,eabwar1,Phylloscopus orientalis,Phylloscopus orientalis,Eastern Bonelli's Warbler,Passeriformes,Phylloscopidae (Leaf Warblers),Leaf Warblers,NA
+24258,species,woowar,Phylloscopus sibilatrix,Phylloscopus sibilatrix,Wood Warbler,Passeriformes,Phylloscopidae (Leaf Warblers),Leaf Warblers,NA
+24307,species,wlwwar,Phylloscopus trochilus,Phylloscopus trochilus,Willow Warbler,Passeriformes,Phylloscopidae (Leaf Warblers),Leaf Warblers,NA
+7479,species,gloibi,Plegadis falcinellus,Plegadis falcinellus,Glossy Ibis,Pelecaniformes,Threskiornithidae (Ibises and Spoonbills),"Herons, Ibis, and Allies",NA
+21522,species,somtit3,Parus lugubris,Poecile lugubris,Sombre Tit,Passeriformes,"Paridae (Tits, Chickadees, and Titmice)","Tits, Chickadees, and Titmice",NA
+21522,species,somtit3,Poecile lugubris,Poecile lugubris,Sombre Tit,Passeriformes,"Paridae (Tits, Chickadees, and Titmice)","Tits, Chickadees, and Titmice",NA
+5373,species,spocra1,Porzana porzana,Porzana porzana,Spotted Crake,Gruiformes,"Rallidae (Rails, Gallinules, and Coots)","Rails, Gallinules, and Allies",NA
+22725,species,grapri1,Prinia gracilis,Prinia gracilis,Graceful Prinia,Passeriformes,Cisticolidae (Cisticolas and Allies),Cisticolas and Allies,NA
+30866,species,dunnoc1,Prunella modularis,Prunella modularis,Dunnock,Passeriformes,Prunellidae (Accentors),Accentors,NA
+12019,species,rorpar,Psittacula krameri,Psittacula krameri,Rose-ringed Parakeet,Psittaciformes,Psittaculidae (Old World Parrots),"Parrots, Parakeets, and Allies",NA
+2839,species,pitsan1,Pterocles alchata,Pterocles alchata,Pin-tailed Sandgrouse,Pterocliformes,Pteroclidae (Sandgrouse),Sandgrouse,NA
+2858,species,crosan1,Pterocles coronatus,Pterocles coronatus,Crowned Sandgrouse,Pterocliformes,Pteroclidae (Sandgrouse),Sandgrouse,NA
+2852,species,blbsan1,Pterocles orientalis,Pterocles orientalis,Black-bellied Sandgrouse,Pterocliformes,Pteroclidae (Sandgrouse),Sandgrouse,NA
+2851,species,sposan1,Pterocles senegallus,Pterocles senegallus,Spotted Sandgrouse,Pterocliformes,Pteroclidae (Sandgrouse),Sandgrouse,NA
+23588,species,rocmar2,Hirundo obsoleta,Ptyonoprogne fuligula,Rock Martin,Passeriformes,Hirundinidae (Swallows),Martins and Swallows,NA
+23588,species,rocmar2,Ptyonoprogne fuligula,Ptyonoprogne fuligula,Rock Martin,Passeriformes,Hirundinidae (Swallows),Martins and Swallows,NA
+23587,species,eurcrm1,Ptyonoprogne rupestris,Ptyonoprogne rupestris,Eurasian Crag-Martin,Passeriformes,Hirundinidae (Swallows),Martins and Swallows,NA
+24019,species,whsbul1,Pycnonotus xanthopygos,Pycnonotus xanthopygos,White-spectacled Bulbul,Passeriformes,Pycnonotidae (Bulbuls),Bulbuls,NA
+21769,species,euptit1,Remiz pendulinus,Remiz pendulinus,Eurasian Penduline-Tit,Passeriformes,Remizidae (Penduline-Tits),Penduline-Tits and Verdin,NA
+31670,species,desfin2,Rhodopechys obsoletus,Rhodospiza obsoleta,Desert Finch,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+31670,species,desfin2,Rhodospiza obsoleta,Rhodospiza obsoleta,Desert Finch,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+23564,species,banswa,Riparia riparia,Riparia riparia,Bank Swallow,Passeriformes,Hirundinidae (Swallows),Martins and Swallows,NA
+29034,species,whinch1,Saxicola rubetra,Saxicola rubetra,Whinchat,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29041,species,stonec4,Saxicola rubicola,Saxicola rubicola,European Stonechat,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+29041,species,stonec4,Saxicola torquatus,Saxicola rubicola,European Stonechat,Passeriformes,Muscicapidae (Old World Flycatchers),Old World Flycatchers,NA
+6057,species,eurwoo,Scolopax rusticola,Scolopax rusticola,Eurasian Woodcock,Charadriiformes,Scolopacidae (Sandpipers and Allies),Shorebirds,NA
+24517,species,stswar1,Scotocerca inquieta,Scotocerca inquieta,Scrub Warbler,Passeriformes,Scotocercidae (Bush Warblers and Allies),Bush Warblers and Allies,NA
+31908,species,eurser1,Serinus serinus,Serinus serinus,European Serin,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+31914,species,syrser1,Serinus syriacus,Serinus syriacus,Syrian Serin,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+464,species,norsho,Anas clypeata,Spatula clypeata,Northern Shoveler,Anseriformes,"Anatidae (Ducks, Geese, and Waterfowl)",Waterfowl,NA
+464,species,norsho,Spatula clypeata,Spatula clypeata,Northern Shoveler,Anseriformes,"Anatidae (Ducks, Geese, and Waterfowl)",Waterfowl,NA
+2070,species,laudov1,Spilopelia senegalensis,Spilopelia senegalensis,Laughing Dove,Columbiformes,Columbidae (Pigeons and Doves),Pigeons and Doves,NA
+2070,species,laudov1,Stigmatopelia senegalensis,Spilopelia senegalensis,Laughing Dove,Columbiformes,Columbidae (Pigeons and Doves),Pigeons and Doves,NA
+2070,species,laudov1,Streptopelia senegalensis,Spilopelia senegalensis,Laughing Dove,Columbiformes,Columbidae (Pigeons and Doves),Pigeons and Doves,NA
+31930,species,eursis,Carduelis spinus,Spinus spinus,Eurasian Siskin,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+31930,species,eursis,Spinus spinus,Spinus spinus,Eurasian Siskin,Passeriformes,"Fringillidae (Finches, Euphonias, and Allies)","Finches, Euphonias, and Allies",NA
+2033,species,eucdov,Streptopelia decaocto,Streptopelia decaocto,Eurasian Collared-Dove,Columbiformes,Columbidae (Pigeons and Doves),Pigeons and Doves,NA
+2037,species,afcdov1,Streptopelia roseogrisea,Streptopelia roseogrisea,African Collared-Dove,Columbiformes,Columbidae (Pigeons and Doves),Pigeons and Doves,NA
+2017,species,eutdov,Streptopelia turtur,Streptopelia turtur,European Turtle-Dove,Columbiformes,Columbidae (Pigeons and Doves),Pigeons and Doves,NA
+8911,species,tawowl1,Strix aluco,Strix aluco,Tawny Owl,Strigiformes,Strigidae (Owls),Owls,NA
+24716,species,blackc1,Sylvia atricapilla,Sylvia atricapilla,Eurasian Blackcap,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+24722,species,garwar1,Sylvia borin,Sylvia borin,Garden Warbler,Passeriformes,"Sylviidae (Sylviid Warblers, Parrotbills, and Allies)",Sylviid Warblers,NA
+7663,species,lafvul1,Torgos tracheliotos,Torgos tracheliotos,Lappet-faced Vulture,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+7663,species,lafvul1,Torgos tracheliotus,Torgos tracheliotos,Lappet-faced Vulture,Accipitriformes,"Accipitridae (Hawks, Eagles, and Kites)","Vultures, Hawks, and Allies",NA
+6118,species,grnsan,Tringa ochropus,Tringa ochropus,Green Sandpiper,Charadriiformes,Scolopacidae (Sandpipers and Allies),Shorebirds,NA
+26675,species,winwre4,Troglodytes troglodytes,Troglodytes troglodytes,Eurasian Wren,Passeriformes,Troglodytidae (Wrens),Wrens,NA
+27860,species,eurbla,Turdus merula,Turdus merula,Eurasian Blackbird,Passeriformes,Turdidae (Thrushes and Allies),Thrushes,NA
+27839,species,sonthr1,Turdus philomelos,Turdus philomelos,Song Thrush,Passeriformes,Turdidae (Thrushes and Allies),Thrushes,NA
+9312,species,hoopoe,Upupa epops,Upupa epops,Eurasian Hoopoe,Bucerotiformes,Upupidae (Hoopoes),Hoopoes,NA
+5754,species,spwlap1,Vanellus spinosus,Vanellus spinosus,Spur-winged Lapwing,Charadriiformes,Charadriidae (Plovers and Lapwings),Shorebirds,NA
+5749,species,norlap,Vanellus vanellus,Vanellus vanellus,Northern Lapwing,Charadriiformes,Charadriidae (Plovers and Lapwings),Shorebirds,NA
+11781,species,perfal,Falco peregrinus,Falco peregrinus,Peregrine Falcon,Falconiformes,Falconidae (Falcons and Caracaras),Falcons and Caracaras,NA

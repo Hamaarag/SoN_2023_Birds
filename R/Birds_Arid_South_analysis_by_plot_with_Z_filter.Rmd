@@ -1,0 +1,989 @@
+---
+title: "Birds_Arid_South_analysis_by_plot"
+author: "Ron Chen"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+#knitr::opts_chunk$set(dev = "cairo_pdf", dev.args=list(cairo_pdf = list(family='Arial')))
+
+# pcks <- list('devtools','rlang','ggplot2','data.table', 'dplyr','mvabund','kableExtra','lme4','MASS','vegan',
+#              'jtools', 'interactions','car','ecoCopula','ggrepel', 'emmeans', 'Cairo', 'extrafont')
+# sapply(pcks, require, character = TRUE)
+library (devtools)
+library (rlang)
+library (ggplot2)
+library (data.table)
+library (dplyr)
+library (mvabund)
+library (kableExtra)
+library (lme4)
+library (MASS)
+library (vegan)
+library (jtools)
+library (interactions)
+library (car)
+library (ecoCopula)
+library (ggrepel)
+library (emmeans)
+library (Cairo)
+library (extrafont)
+
+source("plot_model_interaction.R")
+source("plot_model_effect.R")
+source("prepare_bird_data_with_Z_filter.R")
+source("plot_alpha_diversity.R")
+source("plot_coefs_with_traits.R")
+source("plot_coefs_with_traits_for_publication.R")
+source("multiplot.R")
+# source_url("https://raw.githubusercontent.com/ronchen1/ron_functions/d2d0bab4dc65f29e53d316ae4098d0469711905b/R/multiplot.R")
+
+# define font name
+SoN_fontname <- "Almoni ML v5 AAA"
+
+# Define the output folder path
+output_path <- file.path("..","output", "arid")
+
+# Check if the output folder exists, and create it if it doesn't
+if (!dir.exists(output_path)) {
+  dir.create(output_path, recursive = TRUE)
+  message("Folder '", output_path, "' has been created.")
+} else {
+  message("Folder '", output_path, "' already exists.")
+}
+```
+
+```{r load using function}
+out <- prepare_bird_data()
+var_names <- names(out)
+for (i in 1:length(var_names)) {
+  assign(var_names[i], out[[i]])
+}
+rm(out)
+P <- P_byplot[grepl("Arid",unit),][order(year,site)][,site:=factor(site)]
+P_no_rare <- P_byplot_no_rare[grepl("Arid",unit),][order(year,site)][,site:=factor(site)]
+```
+
+## Arid South
+
+Factors are proximity to agriculture and time.
+
+5 sites with 6 plots per site (3 for each proximity).
+
+Total 5 campaigns, one of which is pilot in the year 2012. Two of the sites - Samar and Yahel, were sampled only in 2012 and then replaced with Zofar and Lotan.
+
+**Raw data** Total abundance: `r Araw[grepl("Arid",unit),sum(total_count)]` Number of observations: `r Araw[grepl("Arid",unit),.N]` Total richness: `r Araw[grepl("Arid",unit),uniqueN(SciName)]`
+
+**Filtered data** Total abundance: `r A[grepl("Arid",unit),sum(count_under_250)]` Number of observations: `r A[grepl("Arid",unit) & count_under_250>0,.N]` Total richness: `r A[grepl("Arid",unit) & count_under_250>0,uniqueN(SciName)]`
+
+### Model gma, abundance and richness
+
+Richness done *with* rare species. Abundance and mean abundance done *without* rare species. Full models include cosine and sine of the time difference from June 21st (in radians).
+
+#### richness
+
+Explore data.
+
+```{r richness data explore}
+# include rare species in analysis
+P.anal <- copy(P) # set a fixed variable name for analysis, if want to switch between data WITH rare species and data WITHOUT rare species then only change once here
+print("RICHNESS WITH RARE SPECIES")
+plot_alpha_diversity(P.anal, x_val = "agriculture", y_val = "richness", ylab_val = "richness", xlab_val = "agriculture")
+
+dotchart(P.anal$richness, groups = P.anal$agriculture, pch = as.numeric(P.anal$agriculture), ylab = "agriculture", xlab = "richness")
+IVs <- c("richness", "year_ct","site","agriculture", "td_sc", "cos_td_rad", "sin_td_rad", "h_from_sunrise", "cos_hsun", "sin_hsun", "monitors_name",
+                        "wind", "precipitation", "temperature", "clouds")
+kable(summary(P.anal[,..IVs]))%>% kable_styling(font_size = 11)
+```
+
+no observation for all 4 weather variables. many NAs for sampling time of day variables.exclude from model.
+
+```{r richness data explore 2}
+pairs(P.anal[,lapply(X = .SD,FUN = as.numeric),.SDcols=IVs[1:11]])
+kable(cor(P.anal[,lapply(X = .SD,FUN = as.numeric),.SDcols=IVs[1:11]], use = "pairwise.complete.obs")) %>% kable_styling(font_size = 11)
+```
+
+Fit Poisson glm, check for existence of overdispersion
+
+```{r model specification richness, warning=FALSE}
+mdl_r.poiss.int <- glm(data = P.anal, formula = richness ~ agriculture * year_ct + cos_td_rad + sin_td_rad , family = poisson)
+od <- mdl_r.poiss.int$deviance/mdl_r.poiss.int$df.residual
+print("Estimating overdispersion parameter phi: (Res. Dev.)/(n-p) where n=number of observations; p=number of parameters in the model.")
+print(paste0('od = ',od))
+```
+
+Overdispersion parameter is \< 1. Poisson more appropriate. Compare Poisson and negative binomial.
+
+```{r}
+m0.po <- glm(data = P.anal, formula = richness ~ agriculture * year_ct + cos_td_rad + sin_td_rad + site, family = poisson)
+m0.nb <- glm.nb(data = P.anal, formula = richness ~ agriculture * year_ct +  cos_td_rad + sin_td_rad + site)
+AIC(m0.po,m0.nb)
+print("poisson")
+plot(m0.po,which=1:3)
+print("neg bin")
+plot(m0.nb,which=1:3)
+```
+
+negative binomial did not converge due to underdispersion.
+
+```{r model specification richness 2}
+m0 <- m0.po
+me0 <- glmer(data = P.anal, formula =  richness ~ agriculture * year_ct + cos_td_rad + sin_td_rad + (1|site), family = poisson)
+```
+
+mixed model converged.
+
+```{r model specification richness 3}
+summary(me0)
+```
+
+perform backward stepwise model selection of poisson glmer.
+
+```{r model selection richness}
+drop1(me0)
+```
+
+drop sine.
+
+```{r model selection richness 2}
+me1 <- update(me0,~.-sin_td_rad)
+drop1(me1)
+```
+
+final model includes year\*agriculture, sampling time of year. Final model:
+
+```{r model selection richness 3}
+summary(me1)
+ranef(me1)
+dotplot(ranef(me1, condVar=TRUE))
+plot(me1)
+qqmath(me1)
+# scale location plot
+plot(me1, sqrt(abs(resid(.))) ~ fitted(.),
+     type = c("p", "smooth"),
+     main="scale-location",
+     par.settings = list(plot.line =
+                           list(alpha=1, col = "red",
+                                lty = 1, lwd = 2)))
+```
+
+```{r model interpretation richness}
+summ(me1, exp=T, digits = 3)
+
+effplot_agr <- effect_plot(model = me1, data=P.anal, pred = agriculture, interval = T, plot.points = T,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",
+                           main.title = "effect of proximity to agriculture (points are observations)",
+                           line.colors = "black", point.alpha = 0.25)
+effplot_agr$layers[[2]]$geom_params$width <- 0.4
+effplot_agr
+iv_agr_abs <- diff(effplot_agr$data$richness)
+iv_agr_rel <- iv_agr_abs / as.data.table(effplot_agr$data)[agriculture=="Far",richness] * 100
+
+plot_model_interaction(P.anal = P.anal, m = me1, eff2plot = "year_ct", modvar2plot = "agriculture", plot_points=FALSE, plot_residuals=FALSE, export_plot=TRUE, ylabel = NULL, fontname = SoN_fontname, fontsize=22, pdf_width=160, outpath = output_path, colors = c("#d95f02","#1b9e77"))
+
+intplot_year_agr <- interact_plot(model = me1, data=P.anal, pred=year_ct, modx = agriculture, interval = T, plot.points = F,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",
+                           main.title = "Temporal effect by proximity to agriculture",
+                           line.colors = "black", point.alpha = 0.25)
+
+#Temporal trend near settlements - increase of 16.89% 
+time_near <- as.data.table(intplot_year_agr$data)[agriculture=="Near",richness]
+(max(time_near)/min(time_near)-1)*100
+6.419718/5.492003  - 1
+# or 1.16 fold increase
+6.419718/5.492003 
+
+#Temporal trend far from settlements - increase of 82.97% total
+time_far <- as.data.table(intplot_year_agr$data)[agriculture=="Far",richness]
+(max(time_far)/min(time_far)-1)*100
+5.799447/3.169538  - 1
+# or 1.82 fold increase
+5.799447/3.169538 
+
+#Temporal trend far and near
+emm_year_ct <- emtrends(me1, specs = "agriculture", var = "year_ct", type = "response")
+print(emm_year_ct)
+test_results_year_ct <- test(emm_year_ct, null = 0, adjust = "fdr")
+print(test_results_year_ct)
+
+#Means far vs near
+EMM <- emmeans(object = me1, ~agriculture*year_ct)
+print(EMM)
+test_results_land_use <- test(pairs(EMM, by="year_ct"), by=NULL, adjust="fdr")
+print(test_results_land_use)
+
+intplot_year_agr
+iv_agr_abs_start <- as.data.table(intplot_year_agr$data)[year_ct==0,diff(richness)]
+iv_agr_abs_end <- as.data.table(intplot_year_agr$data)[year_ct==max(year_ct),diff(richness)]
+iv_agr_rel_start <- iv_agr_abs_start / as.data.table(intplot_year_agr$data)[agriculture=="Near" & year_ct==0,richness]*100
+iv_agr_rel_end <- iv_agr_abs_end / as.data.table(intplot_year_agr$data)[agriculture=="Near" & year_ct==max(year_ct),richness]*100
+iv_year_rel_far <- exp(fixef(me1)["year_ct"])
+iv_year_rel_near <- exp(fixef(me1)["year_ct"]+fixef(me1)["agricultureNear:year_ct"])
+
+m_coef <- fixef(me1)
+X <- unique(data.table(samp_date = as_date(as.duration(P.anal$timediff_Jun21+172)),
+                       contrib = exp(m_coef["cos_td_rad"]*P.anal$cos_td_rad))[order(samp_date)])
+plot(X$samp_date, X$contrib,xlab = "time of year", ylab = "Effect on richness (multiplier)", type = "b")
+
+
+```
+
+**statistically significant higher richness near agriculture.**
+
+Near plots have on average `r iv_agr_abs` more species than far plots, which is `r iv_agr_rel` percent higher.
+
+**Significant stronger relative increase in richness far from settlements:**
+
+On average, a near plot has `r (iv_agr_abs_start+iv_agr_abs_end)/2` more species than a far plot, which is `r (iv_agr_rel_start+iv_agr_rel_end)/2` percent higher.
+
+The average rate of increase in richness far from settlements is FOUR FOLD the rate near settlements, `r (iv_year_rel_far-1)*100` vs. `r (iv_year_rel_near-1)*100`, respectively.
+
+#### geometric mean of abundance
+
+Explore data. Exclude time of day because of high number of NAs.
+
+```{r gma data explore}
+# exclude rare species in analysis
+P.anal <- copy(P_no_rare)
+
+print("GEOMETRIC MEAN ABUNDANCE WITHOUT RARE SPECIES")
+plot_alpha_diversity(P.anal, x_val = "agriculture", y_val = "gma", ylab_val = "gma", xlab_val = "agriculture")
+
+dotchart(P.anal$gma, groups = P.anal$agriculture, pch = as.numeric(P.anal$agriculture), ylab = "agriculture", xlab = "gma")
+IVs <- c("gma", "year_ct","site","agriculture", "td_sc", "cos_td_rad", "sin_td_rad")
+kable(summary(P.anal[,..IVs]))%>% kable_styling(font_size = 11)
+```
+
+Exclude one plot with zero GMA (Yahel Far 2 2012) Fit glm, compare gamma, gaussian (poisson inappropriate because response is not discrete)
+
+```{r model specification gma, warning=FALSE}
+P.anal <- P.anal[point_name!="Yahel Far 2"]
+mdl_g.gamma.int <- glm(data = P.anal, formula = gma ~ agriculture * year_ct +  cos_td_rad + sin_td_rad + site, family = Gamma)
+mdl_g.gauss.int <- glm(data = P.anal, formula = gma ~ agriculture * year_ct +  cos_td_rad + sin_td_rad + site, family = gaussian)
+plot(mdl_g.gamma.int,which = 1:3,sub.caption = "gamma")
+plot(mdl_g.gauss.int,which = 1:3,sub.caption = "gaussian")
+```
+
+Gamma seems better than gaussian. Fit fixed and mixed models.
+
+```{r model specification gma 2}
+m0 <- glm(data = P.anal, formula = gma ~ agriculture * year_ct +  cos_td_rad + sin_td_rad + site, family = Gamma)
+me0 <- glmer(data = P.anal, formula =  gma ~ agriculture * year_ct +  cos_td_rad + sin_td_rad + (1|site), family = Gamma)
+```
+
+Mixed model converged.
+
+```{r model specification gma 3}
+summary(me0)
+```
+
+perform stepwise model selection of Gamma glmer.
+
+```{r model selection gma}
+drop1(me0)
+```
+
+drop agriculture:year.
+
+```{r}
+me1 <- update(me0, ~.-agriculture:year_ct)
+drop1(me1)
+```
+
+drop cosine.
+
+```{r}
+me1 <- update(me1, ~.-cos_td_rad)
+drop1(me1)
+```
+
+drop year.
+
+```{r}
+me1 <- update(me1, ~.-year_ct)
+drop1(me1)
+```
+
+agriculture and sampling time of year remain. This is the final model:
+
+```{r model selection gma 2}
+summary(me1)
+ranef(me1)
+dotplot(ranef(me1, condVar=TRUE))
+plot(me1)
+qqmath(me1)
+# scale location plot
+plot(me1, sqrt(abs(resid(.))) ~ fitted(.),
+     type = c("p", "smooth"),
+     main="scale-location",
+     par.settings = list(plot.line =
+                           list(alpha=1, col = "red",
+                                lty = 1, lwd = 2)))
+```
+
+```{r model interpretation gma}
+summ(me1)
+
+plot_model_effect(P.anal = P.anal, m = me1, eff2plot = "agriculture", export_plot = TRUE, plot_points = TRUE, fontname = SoN_fontname, outpath = output_path)
+
+effplot_agr <- effect_plot(model = me1, data=P.anal, pred = agriculture, interval = T, plot.points = T,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",
+                           main.title = "effect of proximity to agriculture (points are observations)",
+                           line.colors = "black", point.alpha = 0.25)
+effplot_agr$layers[[2]]$geom_params$width <- 0.4
+
+
+
+#abundance near settlements is 26.18% higher than far 
+gma_agri <- as.data.table(effplot_agr$data$gma)
+(max(gma_agri)/min(gma_agri)-1)*100
+effplot_agr$data$gma
+(2.452742/1.943733  -1) * 100
+
+#or 1.26 fold
+2.452742/1.943733 
+
+effplot_agr
+iv_agr_abs <- diff(effplot_agr$data$gma)
+iv_agr_rel <- (iv_agr_abs/as.data.table(effplot_agr$data)[agriculture=="Far",gma]) * 100
+print(iv_agr_rel)
+
+```
+
+**Temporal trend in GMA is not significant.**
+
+**Significant effect on GMA for agriculture proximity: higher near agriculture.**
+
+#### abundance
+
+Explore data
+
+```{r abundance data explore}
+# exclude rare species in analysis
+P.anal <- copy(P_no_rare)
+
+print("ABUNDANCE WITHOUT RARE SPECIES")
+plot_alpha_diversity(P.anal, x_val = "agriculture", y_val = "abundance", ylab_val = "abundance", xlab_val = "agriculture")
+
+dotchart(P.anal$abundance, groups = P.anal$agriculture, pch = as.numeric(P.anal$agriculture), ylab = "agriculture", xlab = "abundance")
+IVs <- c("abundance", "year_ct","site","agriculture", "td_sc", "cos_td_rad", "sin_td_rad")
+kable(summary(P.anal[,..IVs]))%>% kable_styling(font_size = 11)
+```
+
+```{r model specification abundance, warning=FALSE, eval=FALSE}
+mdl_a.po <- glm(data = P.anal, formula = abundance ~ agriculture * year_ct +  cos_td_rad + sin_td_rad + site, family = poisson)
+od <- mdl_a.po$deviance/mdl_a.po$df.residual
+print("Estimating overdispersion parameter phi: (Res. Dev.)/(n-p) where n=number of observations; p=number of parameters in the model.")
+print(paste0('od = ',od))
+plot(mdl_a.po,which = 1:2,sub.caption = "poisson")
+```
+
+PHI\>1, hence choose negative binomial. Fit fixed and mixed models. Choose mixed model if possible, otherwise choose a model with fixed-effects only.
+
+```{r model specification abundance 2}
+m0 <- glm.nb(data = P.anal, formula = abundance ~ agriculture * year_ct +  cos_td_rad + sin_td_rad + site)
+me0 <- glmer.nb(data = P.anal, formula =  abundance ~ agriculture * year_ct  + cos_td_rad + sin_td_rad + (1|site))
+```
+
+Mixed model converged.
+
+```{r model specification abundance 3}
+summary(me0)
+```
+
+model selection of glmer.
+
+```{r model selection abundance}
+drop1(me0)
+```
+
+drop sine.
+
+```{r}
+me1 <- update(me0, ~.-sin_td_rad)
+drop1(me1)
+```
+
+final model includes agriculture\*year, sampling time of year. The final model:
+
+```{r model selection abundance 3}
+summary(me1)
+ranef(me1)
+dotplot(ranef(me1, condVar=TRUE))
+plot(me1)
+qqmath(me1)
+# scale location plot
+plot(me1, sqrt(abs(resid(.))) ~ fitted(.),
+     type = c("p", "smooth"),
+     main="scale-location",
+     par.settings = list(plot.line =
+                           list(alpha=1, col = "red",
+                                lty = 1, lwd = 2)))
+```
+
+Interpretation of abundance model:
+
+```{r model interpretation abundance, warning=FALSE}
+summ(me1, exp=T, digits = 3)
+
+plot_model_interaction(P.anal = P.anal, m = me1, eff2plot = "year_ct", modvar2plot = "agriculture", plot_points=FALSE, plot_residuals=FALSE, export_plot=TRUE, ylabel = NULL, fontname = SoN_fontname, fontsize=22, pdf_width=160, outpath = output_path, colors = c("#d95f02","#1b9e77"))
+
+intplot_year_agr <- interact_plot(model = me1, data=P.anal, pred=year_ct, modx = agriculture, interval = T, plot.points = F,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",
+                           main.title = "Temporal effect by proximity to agriculture",
+                           line.colors = "black", point.alpha = 0.25)
+
+#Temporal trend near agriculture - increase of 3.04% 
+time_near <- as.data.table(intplot_year_agr$data)[agriculture=="Near",abundance]
+(max(time_near)/min(time_near)-1)*100
+18.47940/17.93386 - 1
+# or 1.03 fold increase
+18.47940/17.93386  
+
+#Temporal trend far from agriculture - increase of 101.41% total
+time_far <- as.data.table(intplot_year_agr$data)[agriculture=="Near",abundance]
+(max(time_far)/min(time_far)-1)*100
+13.130416/6.518979 - 1
+# or 2.01 fold increase
+13.130416/6.518979   
+
+#emmeans
+emm_year_ct <- emtrends(me1, specs = "agriculture", var = "year_ct", type = "response")
+print(emm_year_ct)
+test_results_year_ct <- test(emm_year_ct, null = 0, adjust = "fdr")
+print(test_results_year_ct)
+
+#Means far vs near
+EMM <- emmeans(object = me1, ~agriculture*year_ct)
+print(EMM)
+print((2.9/2.22) -1)
+#on average, near is 30.63% higher than far
+
+test_results_land_use <- test(pairs(EMM, by="year_ct"), by=NULL, adjust="fdr")
+print(test_results_land_use)
+
+
+effplot_agr <- effect_plot(model = me1, data=P.anal, pred = agriculture, interval = T, plot.points = T,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",
+                           main.title = "effect of proximity to agriculture (points are observations)",
+                           line.colors = "black", point.alpha = 0.25)
+
+effplot_agr$layers[[2]]$geom_params$width <- 0.4
+effplot_agr
+iv_agr_abs <- diff(effplot_agr$data$abundance)
+iv_agr_rel <- iv_agr_abs / as.data.table(effplot_agr$data)[agriculture=="Far",abundance] * 100
+
+intplot_year_agr <- interact_plot(model = me1, data=P.anal, pred=year_ct, modx = agriculture, interval = T, plot.points = F,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",
+                           main.title = "Temporal effect by proximity to agriculture",
+                           line.colors = "black", point.alpha = 0.25)
+intplot_year_agr
+iv_agr_abs_start <- as.data.table(intplot_year_agr$data)[year_ct==0,diff(abundance)]
+iv_agr_abs_end <- as.data.table(intplot_year_agr$data)[year_ct==max(year_ct),diff(abundance)]
+iv_agr_rel_start <- iv_agr_abs_start / as.data.table(intplot_year_agr$data)[agriculture=="Near" & year_ct==0,abundance]*100
+iv_agr_rel_end <- iv_agr_abs_end / as.data.table(intplot_year_agr$data)[agriculture=="Near" & year_ct==max(year_ct),abundance]*100
+iv_year_rel_far <- exp(fixef(me1)["year_ct"])
+iv_year_rel_near <- exp(fixef(me1)["year_ct"]+fixef(me1)["agricultureNear:year_ct"])
+
+m_coef <- fixef(me1)
+X <- unique(data.table(samp_date = as_date(as.duration(P.anal$timediff_Jun21+172)),
+                       contrib = exp(m_coef["cos_td_rad"]*P.anal$cos_td_rad))[order(samp_date)])
+plot(X$samp_date, X$contrib,xlab = "time of year", ylab = "Effect on abundance (multiplier)", type = "b")
+
+
+
+```
+
+**significantly higher abundance near agriculture compared to far from it.**
+
+Near plots have on average `r iv_agr_abs` more individuals than far plots, which is `r iv_agr_rel` percent higher.
+
+**significant increase in abundance far from agriculture (`r (iv_year_rel_far-1)*100`%), no change near agriculture.**
+
+On average, a near plot has `r (iv_agr_abs_start+iv_agr_abs_end)/2` more individuals than a far plot, which is `r (iv_agr_rel_start+iv_agr_rel_end)/2` percent higher.
+
+#### community analysis using package MVabund
+
+Explore single species observations, including mean-variance plot. There is a strong mean-var relationship, indicating that employing GLMs is the proper way to analyze, rather than OLS (assumption of homogeneity is violated).
+
+```{r explore single observations}
+abu_by_spp.arid <- abu_by_spp[grepl("Arid",unit),]
+abu_by_spp_no_rare.arid <- abu_by_spp_no_rare[grepl("Arid",unit),]
+
+spp <- abu_by_spp.arid[,.SD[,(length(col_names)+1):ncol(abu_by_spp.arid)]]
+spp_no_rare <- abu_by_spp_no_rare.arid[,.SD[,(length(col_names)+1):ncol(abu_by_spp_no_rare.arid)]]
+# filter out species with zero counts (were either not observed or are rare and were excluded)
+spp <- spp[,.SD,.SDcols = colSums(spp)>0]
+spp <- mvabund(spp)
+spp_no_rare <- spp_no_rare[,.SD,.SDcols = colSums(spp_no_rare)>0]
+spp_no_rare <- mvabund(spp_no_rare)
+
+env_data <- abu_by_spp_no_rare.arid[,..col_names]
+env_data[,site:=factor(site)]
+
+try(expr = plot(spp_no_rare ~ abu_by_spp_no_rare.arid$agriculture,overall.main="raw abundances", transformation = "no"))
+
+print("abundance observations, aggregated into plots and species (i.e., several observations from the same species in the same plot are aggregated):")
+plot(sort(spp_no_rare[spp_no_rare>0]))
+print("these are the actual observations, before aggregation into plots:")
+dotchart(sort(A_no_rare[grepl("Arid",unit),count_under_250])) # these are the actual observations, before aggregation into plots
+print("zoom in on high abundance observations:")
+dotchart(sort(A_no_rare[grepl("Arid",unit) & count_under_250>=30,count_under_250]))
+meanvar.plot(spp_no_rare, xlab = "mean abundance of a given species across sites", ylab = "variance of the abundance of a given species across sites")
+```
+
+start model specification:
+
+```{r community analysis MVabund model specification}
+mva_m0.po <- manyglm(formula = spp_no_rare ~ agriculture * year_ct + cos_td_rad + sin_td_rad, family = "poisson", data = env_data)
+mva_m0.nb <- manyglm(formula = spp_no_rare ~ agriculture * year_ct  + cos_td_rad + sin_td_rad, family = "negative.binomial", data = env_data)
+aic_dt <- data.table(nb = mva_m0.nb$aic, po=mva_m0.po$aic)
+colMeans(aic_dt)
+print("POISSON")
+plot(mva_m0.po, which=1:3)
+print("NEGATIVE BINOMIAL")
+plot(mva_m0.nb, which=1:3)
+```
+
+negative binomial model is better than poisson according to residuals and AIC comparison.
+
+```{r community analysis MVabund model specification 2}
+mva_m0 <- mva_m0.nb
+mva_m1 <- manyglm(formula = spp_no_rare ~ agriculture * year_ct +  cos_td_rad + sin_td_rad +site, data = env_data)
+aic_dt$nb1 <- mva_m1$aic
+colMeans(aic_dt)
+```
+
+The addition of the explanatory variable 'site' is improving the AIC of the model. stepwise selection of model:
+
+```{r community analysis MVabund model selection}
+drop1(mva_m1)
+```
+
+drop interaction of agriculture with year.
+
+```{r community analysis MVabund model selection 2}
+mva_m1 <- manyglm(formula = spp_no_rare ~ agriculture + year_ct + cos_td_rad + sin_td_rad +site, data = env_data)
+drop1(mva_m1)
+```
+
+final model includes agriculture, year sampling time of year and site.
+
+```{r community analysis MVabund model validation}
+plot(mva_m1, which=1:3)
+```
+
+```{r community analysis MVabund model interpretation}
+#summ_m1 <- summary(mva_m1)
+#saveRDS(summ_m1, file = "../output/Arid_MVabund_summary_output_999iter.rds")
+#anov_m1.uni <- anova(mva_m1, p.uni = "adjusted", nBoot = 999, show.time = "all")
+#saveRDS(anov_m1.uni, file = "../output/Arid_MVabund_anova_output_999iter.rds")
+summ_m1 <- readRDS(file = "../output/20230831_Arid_MVabund_summary_output_999iter.rds")
+print(summ_m1)
+anov_m1.uni <- readRDS(file = "../output/20240519_Arid_MVabund_anova_output_999iter.rds")
+print(anov_m1.uni)
+```
+
+**All factors (agriculture, year, time of year, site) have a statistically significant effect on community composition.**
+
+```{r community analysis MVabund model interpretation - plot coefficients}
+coefp <- merge(data.table(t(coef(mva_m1)/log(2)),keep.rownames=TRUE), data.table(t(anov_m1.uni$uni.p), keep.rownames = TRUE), by = "rn") # coefficients are on log2 scale to simplify interpretation, yet keep presenetation on log scale rather than linear. The link function used for poisson is log -> above 0 is a positive trend and below 0 is negative trend
+
+# add total species abundance
+coefp <- merge(coefp,as.data.table(colSums(spp_no_rare),keep.rownames = TRUE), by.x = "rn", by.y = "V1")
+
+# add hebrew name and traits
+sci_heb <- unique(A[,.(SciName,HebName)])
+sci_heb[,SciName:=make.names(SciName)]
+coefp <- merge(coefp, sci_heb, by.x = "rn", by.y = "SciName")
+
+# set column names based on the predictor variables
+colnames(coefp)[grepl("rn",colnames(coefp))] <- "SciName"
+colnames(coefp)[grepl("Intercept).x",colnames(coefp))] <- "intercept.coef"
+colnames(coefp)[grepl("Intercept).y",colnames(coefp))] <- "intercept.p"
+colnames(coefp)[colnames(coefp)=="settlementsNear"] <- "settlementsNear.coef"
+colnames(coefp)[colnames(coefp)=="settlements"] <- "settlements.p"
+colnames(coefp)[colnames(coefp)=="agricultureNear"] <- "agricultureNear.coef"
+colnames(coefp)[colnames(coefp)=="agriculture"] <- "agriculture.p"
+colnames(coefp)[grepl("cos_td_rad.x",colnames(coefp))] <- "cos_td_rad.coef"
+colnames(coefp)[colnames(coefp)=="cos_td_rad.y"] <- "cos_td_rad.p"
+colnames(coefp)[grepl("sin_td_rad.x",colnames(coefp))] <- "sin_td_rad.coef"
+colnames(coefp)[grepl("sin_td_rad.y",colnames(coefp))] <- "sin_td_rad.p"
+colnames(coefp)[colnames(coefp)=="year_ct.x"] <- "year_ct.coef"
+colnames(coefp)[colnames(coefp)=="year_ct.y"] <- "year_ct.p"
+colnames(coefp)[colnames(coefp)=="V2"] <- "species_abundance"
+colnames(coefp)[colnames(coefp)=="dunesshifting"] <- "dunesShifting.coef"
+colnames(coefp)[colnames(coefp)=="dunes"] <- "dunes.p"
+colnames(coefp)[colnames(coefp)=="site"] <- "site.p"
+colnames(coefp)[colnames(coefp)=="subunitCarmel"] <- "subunitCarmel.coef"
+colnames(coefp)[colnames(coefp)=="subunitGalilee"] <- "subunitGalilee.coef"
+colnames(coefp)[colnames(coefp)=="subunit"] <- "subunit.p"
+colnames(coefp)[colnames(coefp)=="habitatWadi"] <- "habitatWadi.coef"
+colnames(coefp)[colnames(coefp)=="habitat"] <- "habitat.p"
+
+plot_coefs_agriculture <- plot_coefs_with_traits(D = A_no_rare[grepl("Arid",unit)],
+                                     cp = coefp[,.(SciName,agricultureNear.coef,agriculture.p,species_abundance)],
+                                     plot_title = "Effect of proximity to agriculture on species abundance",
+                                     plot_xlabel = expression(paste("coefficient of NEAR agriculture, (log"[2]," scale)")),
+                                     mark_batha = TRUE)
+plot_coefs_agriculture
+
+plot_coefs_agriculture <- plot_coefs_with_traits_for_publication(D = A_no_rare[grepl("Arid",unit)],
+                                                cp = coefp[,.(SciName,agricultureNear.coef,agriculture.p,species_abundance)],
+                                                plot_title = "Effect of proximity to agriculture on species abundance",
+                                                plot_xlabel = expression(paste("coefficient of NEAR agriculture, (log"[2]," scale)")),
+                                                mark_batha = TRUE,
+                                                show_legend = FALSE,
+                                                export_plot = TRUE,
+                                                fontname = SoN_fontname,
+                                                effect_str = "agriculture",
+                                                outpath = output_path)
+plot_coefs_agriculture
+
+plot_coefs_year <- plot_coefs_with_traits(D = A_no_rare[grepl("Arid",unit)],
+                                     cp = coefp[,.(SciName,year_ct.coef,year_ct.p,species_abundance)],
+                                     plot_title = "Temporal effect on species abundance",
+                                     plot_xlabel = expression(paste("coefficient of year counter, (log"[2]," scale)")),
+                                     mark_batha = TRUE)
+
+
+plot_coefs_year <- plot_coefs_with_traits_for_publication(D = A_no_rare[grepl("Arid",unit)],
+                                                cp = coefp[,.(SciName,year_ct.coef,year_ct.p,species_abundance)],
+                                                plot_title = "Temporal effect on species abundance",
+                                                plot_xlabel = expression(paste("coefficient of coefficient of year counter, (log"[2]," scale)")),
+                                                mark_batha = TRUE,
+                                                show_legend = FALSE,
+                                                export_plot = TRUE,
+                                                fontname = SoN_fontname,
+                                                effect_str = "year_ct",
+                                                outpath = output_path)
+plot_coefs_year
+
+```
+
+**Significant effect of agriculture proximity: synanthrope / invasive species near agriculture, batha specialists far from agriculture.** **Significant temporal trend, however only few species are showing a statistically significant increase / decrease.**
+
+European turtle dove is decreasing, in accordance with what is seen in other units. House sparrow increasing, however not significant result. Blackstart increasing significant.
+
+### Oenanthe melanura
+
+```{r community analysis MVabund - per species models oenmel}
+#####Oenanthe melanura - שחור זנב#####
+
+spec_name <- "Oenanthe melanura"
+spec_var_name <- "Oenanthe.melanura"
+y_cutoff <- NULL
+at_list <- NULL
+plot_alpha_diversity(P = abu_by_spp.arid, x_val = "agriculture", y_val = spec_name, ylab_val = spec_name)
+d <- cbind(env_data,setnames(data.table(spp_no_rare[,spec_var_name]), old = 1, new = spec_var_name))
+m <- glm.nb(formula = paste(spec_var_name,"agriculture + year_ct + cos_td_rad + sin_td_rad + site", sep = "~"), data = d)
+print(coef(mva_m1)[,spec_var_name])
+print(coef(m))
+
+print(paste("RESULTS FOR",spec_name))
+print("P-values")
+pdt <- setnames(x = as.data.table(anov_m1.uni$uni.p, keep.rownames = T)[,.SD,.SDcols = c("rn",spec_var_name)], old = 1:2, new = c("term","p"))
+print(pdt)
+
+#Temporal trend----
+if (pdt[term=="year_ct",p<0.1]) {
+  plot_time <- effect_plot(data = d, model = m, pred = year_ct, interval = T, plot.points = T, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1", main.title = spec_name, at = at_list)
+  print(plot_time)
+  plot_time2 <- effect_plot(data = d, model = m, pred = year_ct, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = T, colors = "Qual1", main.title = spec_name, at = at_list)
+  print(plot_time2)
+  time_dt <- as.data.table(plot_time$data)[,..spec_var_name]
+  print(paste("change in",spec_name,"abundance over monitoring period:",(time_dt[nrow(time_dt)]-time_dt[1])/time_dt[1] * 100,"%"))
+}
+
+# spatial effect - agriculture ----
+if (pdt[term=="agriculture",p<0.1]) {
+  plot_agr <- effect_plot(data = d, model = m, pred = agriculture, interval = T, plot.points = T, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                          partial.residuals = F, colors = "Qual1", main.title = spec_name, at = at_list)
+  print(plot_agr)
+  agr_dt <- as.data.table(plot_agr$data)[,..spec_var_name]
+  print(paste(spec_name,"abundance in high proximity is",(max(agr_dt)/min(agr_dt) - 1) *100,"% higher than low proximity."))
+}
+
+rm(spec_name)
+rm(spec_var_name)
+rm(d)
+rm(m)
+rm(pdt)
+```
+
+### Streptopelia turtur
+
+```{r community analysis MVabund - per species models strtur}
+#####Streptopelia turtur######
+
+spec_name <- "Streptopelia turtur"
+spec_var_name <- "Streptopelia.turtur"
+y_cutoff <- NULL
+at_list <- NULL
+plot_alpha_diversity(P = abu_by_spp.arid, x_val = "agriculture", y_val = spec_name, ylab_val = spec_name)
+d <- cbind(env_data,setnames(data.table(spp_no_rare[,spec_var_name]), old = 1, new = spec_var_name))
+m <- glm.nb(formula = paste(spec_var_name,"agriculture + year_ct + cos_td_rad + sin_td_rad + site", sep = "~"), data = d)
+print(coef(mva_m1)[,spec_var_name])
+print(coef(m))
+
+print(paste("RESULTS FOR",spec_name))
+print("P-values")
+pdt <- setnames(x = as.data.table(anov_m1.uni$uni.p, keep.rownames = T)[,.SD,.SDcols = c("rn",spec_var_name)], old = 1:2, new = c("term","p"))
+print(pdt)
+
+#Temporal trend----
+if (pdt[term=="year_ct",p<0.1]) {
+  plot_time <- effect_plot(data = d, model = m, pred = year_ct, interval = T, plot.points = T, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1", main.title = spec_name, at = at_list)
+  print(plot_time)
+  plot_time2 <- effect_plot(data = d, model = m, pred = year_ct, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = T, colors = "Qual1", main.title = spec_name, at = at_list)
+  print(plot_time2)
+  time_dt <- as.data.table(plot_time$data)[,..spec_var_name]
+  print(paste("change in",spec_name,"abundance over monitoring period:",(time_dt[nrow(time_dt)]-time_dt[1])/time_dt[1] * 100,"%"))
+}
+
+# spatial effect - agriculture ----
+if (pdt[term=="agriculture",p<0.1]) {
+  plot_agr <- effect_plot(data = d, model = m, pred = agriculture, interval = T, plot.points = T, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                          partial.residuals = F, colors = "Qual1", main.title = spec_name, at = at_list)
+  print(plot_agr)
+  agr_dt <- as.data.table(plot_agr$data)[,..spec_var_name]
+  print(paste(spec_name,"abundance in high proximity is",(max(agr_dt)/min(agr_dt) - 1) *100,"% higher than low proximity."))
+}
+
+rm(spec_name)
+rm(spec_var_name)
+rm(d)
+rm(m)
+rm(pdt)
+```
+
+
+```{r community analysis MVabund - per species models}
+#####Vanellus spinosus - סיקסק#####
+
+d.spinosus <- cbind(env_data,data.table(Vanellus.spinosus = spp_no_rare[,"Vanellus.spinosus"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.spinosus <- glm.nb(formula = Vanellus.spinosus ~ agriculture + year_ct + cos_td_rad + sin_td_rad + site, data = d.spinosus)
+coef(mva_m1)[,"Vanellus.spinosus"]
+coef(m.spinosus)
+
+spinosus_agri <- effect_plot(data = d.spinosus, model = m.spinosus, pred = agriculture, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+
+#near agri is 420.31% higher
+(max(spinosus_agri$data$Vanellus.spinosus)/min(spinosus_agri$data$Vanellus.spinosus)-1)*100
+1.2144426/0.2334066 - 1
+
+#or 5.2 fold higher
+1.2144426/0.2334066
+
+#####Spilopelia senegalensis - צוצלת######
+
+d.senegal <- cbind(env_data,data.table(Spilopelia.senegalensis = spp_no_rare[,"Spilopelia.senegalensis"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.senegal <- glm.nb(formula = Spilopelia.senegalensis ~ agriculture + year_ct + cos_td_rad + sin_td_rad + site, data = d.senegal)
+coef(mva_m1)[,"Spilopelia.senegalensis"]
+coef(m.senegal)
+
+senegal_agri <- effect_plot(data = d.senegal, model = m.senegal, pred = agriculture, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+
+#near agri is 1588.18% higher
+(max(senegal_agri$data$Spilopelia.senegalensis)/
+    min(senegal_agri$data$Spilopelia.senegalensis)-1)*100
+0.27076919/0.01603906  - 1
+
+#or 16.88 fold higher
+0.27076919/0.01603906
+
+#####Passer domesticus - דרור הבית#####
+
+d.passer <- cbind(env_data,data.table(Passer.domesticus = spp_no_rare[,"Passer.domesticus"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.passer <- glm.nb(formula = Passer.domesticus ~ agriculture + year_ct + cos_td_rad + sin_td_rad + site, data = d.passer)
+coef(mva_m1)[,"Passer.domesticus"]
+coef(m.passer)
+
+passer_agri <- effect_plot(data = d.passer, model = m.passer, pred = agriculture, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+
+#near agri is 1385.68% higher
+(max(passer_agri$data$Passer.domesticus)/min(passer_agri$data$Passer.domesticus)-1)*100
+4.1920694/0.2821637  - 1
+
+#or 14.85 fold higher
+4.1920694/0.2821637 
+
+#####Prinia gracilis - פשוש#####
+
+d.prinia <- cbind(env_data,data.table(Prinia.gracilis = spp_no_rare[,"Prinia.gracilis"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.prinia <- glm.nb(formula = Prinia.gracilis ~ agriculture + year_ct + cos_td_rad + sin_td_rad + site, data = d.prinia)
+coef(mva_m1)[,"Prinia.gracilis"]
+coef(m.prinia)
+
+prinia_agri <- effect_plot(data = d.prinia, model = m.prinia, pred = agriculture, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+
+#near agri is 927.02% higher
+(max(prinia_agri$data$Prinia.gracilis)/min(prinia_agri$data$Prinia.gracilis)-1)*100
+0.5251774/0.0511360 - 1
+
+#or 10.72 fold higher
+0.5251774/0.0511360  
+
+######Cercotrichas galactotes - חמריה חלודת זנב#####
+
+d.galactotes <- cbind(env_data,data.table(Cercotrichas.galactotes = spp_no_rare[,"Cercotrichas.galactotes"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.galactotes <- glm.nb(formula = Cercotrichas.galactotes ~ agriculture + year_ct + cos_td_rad + sin_td_rad + site, data = d.galactotes)
+coef(mva_m1)[,"Cercotrichas.galactotes"]
+coef(m.galactotes)
+
+galactotes_agri <- effect_plot(data = d.galactotes, model = m.galactotes, pred = agriculture, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+
+#near agri is 375.03% higher
+(max(galactotes_agri$data$Cercotrichas.galactotes)/min(galactotes_agri$data$Cercotrichas.galactotes)-1)*100
+0.23589561/0.04965832  - 1
+
+#or 4.75 fold higher
+0.23589561/0.04965832  
+
+##### Galerida cristata - עפרוני מצויץ#####
+
+d.galerida <- cbind(env_data,data.table(Galerida.cristata = spp_no_rare[,"Galerida.cristata"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.galerida <- glm.nb(formula = Galerida.cristata ~ agriculture + year_ct + cos_td_rad + sin_td_rad + site, data = d.galerida)
+coef(mva_m1)[,"Galerida.cristata"]
+coef(m.galerida)
+
+galerida_agri <- effect_plot(data = d.galerida, model = m.galerida, pred = agriculture, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+
+#near agri is 215.47% higher
+(max(galerida_agri$data$Galerida.cristata)/min(galerida_agri$data$Galerida.cristata)-1)*100
+0.25067162/0.07945963 - 1
+
+#or 3.15 fold higher
+0.25067162/0.07945963 
+
+
+##### Pycnonotus xanthopygos - בולבול ממושקף#####
+
+d.pycno <- cbind(env_data,data.table(Pycnonotus.xanthopygos = spp_no_rare[,"Pycnonotus.xanthopygos"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.pycno <- glm.nb(formula = Pycnonotus.xanthopygos ~ agriculture + year_ct + cos_td_rad + sin_td_rad + site, data = d.pycno)
+coef(mva_m1)[,"Pycnonotus.xanthopygos"]
+coef(m.pycno)
+
+pycno_agri <- effect_plot(data = d.pycno, model = m.pycno, pred = agriculture, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+
+#near agri is 112.14% higher
+(max(pycno_agri$data$Pycnonotus.xanthopygos)/min(pycno_agri$data$Pycnonotus.xanthopygos)-1)*100
+1.6853546/0.7944184 - 1
+
+#or 2.12 fold higher
+1.6853546/0.7944184 
+
+
+##### Streptopelia decaocto - תור צווארון#####
+
+d.decaocto <- cbind(env_data,data.table(Streptopelia.decaocto
+ = spp_no_rare[,"Streptopelia.decaocto"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.decaocto <- glm.nb(formula = Streptopelia.decaocto ~ agriculture + year_ct + cos_td_rad + sin_td_rad + site, data = d.decaocto)
+coef(mva_m1)[,"Streptopelia.decaocto"]
+coef(m.decaocto)
+
+decaocto_agri <- effect_plot(data = d.decaocto, model = m.decaocto, pred = agriculture, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+
+#far agri is 72.27% higher
+(max(decaocto_agri$data$Streptopelia.decaocto)/min(decaocto_agri$data$Streptopelia.decaocto)-1)*100
+5.775745/3.352695  - 1
+
+#or 1.72 fold higher
+5.775745/3.352695  
+
+#####Ammomanes deserti - עפרוני מדבר#####
+
+d.ammoma <- cbind(env_data,data.table(Ammomanes.deserti
+ = spp_no_rare[,"Ammomanes.deserti"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.ammoma <- glm.nb(formula = Ammomanes.deserti ~ agriculture + year_ct + cos_td_rad + sin_td_rad + site, data = d.ammoma)
+coef(mva_m1)[,"Ammomanes.deserti"]
+coef(m.ammoma)
+
+ammoma_agri <- effect_plot(data = d.ammoma, model = m.ammoma, pred = agriculture, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+
+#far from agri is 339.45% higher
+(max(ammoma_agri$data$Ammomanes.deserti)/min(ammoma_agri$data$Ammomanes.deserti)-1)*100
+1.0468924/0.2382279  - 1
+
+#or 4.39 fold higher
+1.0468924/0.2382279 
+
+#####Ammoperdix heyi - קורא מדברי#####
+
+d.ammoper <- cbind(env_data,data.table(Ammoperdix.heyi
+ = spp_no_rare[,"Ammoperdix.heyi"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.ammoper <- glm.nb(formula = Ammoperdix.heyi ~ agriculture + year_ct + cos_td_rad + sin_td_rad + site, data = d.ammoper)
+coef(mva_m1)[,"Ammoperdix.heyi"]
+coef(m.ammoper)
+
+ammoper_agri <- effect_plot(data = d.ammoper, model = m.ammoper, pred = agriculture, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+
+#far from agri is 980.55% higher
+(max(ammoper_agri$data$Ammoperdix.heyi)/min(ammoper_agri$data$Ammoperdix.heyi)-1)*100
+0.27702687/0.02563752  - 1
+
+#or 10.8 fold higher
+0.27702687/0.02563752 
+
+#####Scotocerca inquieta - מדברון#####
+
+d.scoto <- cbind(env_data,data.table(Scotocerca.inquieta
+ = spp_no_rare[,"Scotocerca.inquieta"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.scoto <- glm.nb(formula = Scotocerca.inquieta ~ agriculture + year_ct + cos_td_rad + sin_td_rad + site, data = d.scoto)
+coef(mva_m1)[,"Scotocerca.inquieta"]
+coef(m.scoto)
+
+scoto_agri <- effect_plot(data = d.scoto, model = m.scoto, pred = agriculture, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "")
+
+
+#far from agri is 2569.97% higher
+(max(scoto_agri$data$Scotocerca.inquieta)/min(scoto_agri$data$Scotocerca.inquieta)-1)*100
+0.68539719/0.02567057  - 1
+
+#or 26.69 fold higher
+0.68539719/0.02567057 
+
+```
+
+```{r export manyglm p-values}
+write.csv(coefp[,.(SciName,HebName,year_ct.p, agriculture.p)], file = "../output/arid/species_composition_p_values.csv", row.names = F, fileEncoding = "MS-HEBR")
+```
+
+### Session information
+
+```{r}
+session_info()
+```

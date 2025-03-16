@@ -1,0 +1,1122 @@
+---
+title: "Birds_Negev_Highlands_analysis_by_plot"
+author: "Ron Chen"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+#knitr::opts_chunk$set(dev = "cairo_pdf", dev.args=list(cairo_pdf = list(family='Arial')))
+
+# pcks <- list('devtools','rlang','ggplot2','data.table', 'dplyr','mvabund','kableExtra','lme4','MASS','vegan',
+#              'jtools', 'interactions','car','ecoCopula','emmeans','Cairo','extrafont')
+# sapply(pcks, require, character = TRUE)
+library (devtools)
+library (rlang)
+library (ggplot2)
+library (data.table)
+library (dplyr)
+library (mvabund)
+library (kableExtra)
+library (lme4)
+library (MASS)
+library (vegan)
+library (jtools)
+library (interactions)
+library (car)
+library (ecoCopula)
+library (emmeans)
+library (Cairo)
+library (extrafont)
+
+source("plot_model_interaction.R")
+source("plot_model_effect.R")
+source("prepare_bird_data_with_Z_filter.R")
+source("plot_alpha_diversity.R")
+source("plot_coefs_with_traits.R")
+source("plot_coefs_with_traits_for_publication.R")
+source("multiplot.R")
+# source_url("https://raw.githubusercontent.com/ronchen1/ron_functions/d2d0bab4dc65f29e53d316ae4098d0469711905b/R/multiplot.R")
+
+# define font name
+SoN_fontname <- "Almoni ML v5 AAA"
+
+# Define the output folder path
+output_path <- file.path("..","output", "negev_highlands")
+
+# Check if the output folder exists, and create it if it doesn't
+if (!dir.exists(output_path)) {
+  dir.create(output_path, recursive = TRUE)
+  message("Folder '", output_path, "' has been created.")
+} else {
+  message("Folder '", output_path, "' already exists.")
+}
+```
+
+```{r load using function}
+out <- prepare_bird_data()
+var_names <- names(out)
+for (i in 1:length(var_names)) {
+  assign(var_names[i], out[[i]])
+}
+rm(out)
+P <- P_byplot[grepl("Highlands",unit),][order(year,site)][,site:=factor(site)][,habitat:=factor(habitat)]
+P_no_rare <- P_byplot_no_rare[grepl("Highlands",unit),][order(year,site)][,site:=factor(site)][,habitat:=factor(habitat)]
+```
+
+## Negev Highlands
+
+Factors are proximity to settlements, habitat (slope vs. wadi but only far from settlements, near has only slope) and time.
+
+5 sites with 9 plots per site (3 for each habitat X proximity combination).
+
+Total 5 campaigns, one of which is pilot in the year 2012. No sampling was performed in the Wadi habitat during the pilot.
+
+**Raw data**
+Total abundance: `r Araw[grepl("Highlands",unit),sum(total_count)]`
+Number of observations: `r Araw[grepl("Highlands",unit),.N]`
+Total richness: `r Araw[grepl("Highlands",unit),uniqueN(SciName)]`
+
+**Filtered data**
+Total abundance: `r A[grepl("Highlands",unit),sum(count_under_250)]`
+Number of observations: `r A[grepl("Highlands",unit) & count_under_250>0,.N]`
+Total richness: `r A[grepl("Highlands",unit) & count_under_250>0,uniqueN(SciName)]`
+
+
+### Model gma, abundance and richness
+
+Richness done *with* rare species.
+Abundance and mean abundance done *without* rare species.
+Full models include cosine and sine of the time difference from June 21st (in radians).
+
+#### richness
+
+Explore data.
+
+```{r richness data explore}
+# include rare species in analysis
+P.anal <- copy(P) # set a fixed variable name for analysis, if want to switch between data WITH rare species and data WITHOUT rare species then only change once here
+print("RICHNESS WITH RARE SPECIES")
+plot_alpha_diversity(P.anal[habitat=="Slope"], x_val = "settlements", y_val = "richness", ylab_val = "richness", xlab_val = "settlements (only slope habitat)")
+plot_alpha_diversity(P.anal[settlements=="Far" & year_ct>0], x_val = "habitat", y_val = "richness", ylab_val = "richness", xlab_val = "habitat (only far from settlements and without 2012)")
+
+dotchart(P.anal$richness, groups = P.anal$settlements, pch = as.numeric(P.anal$settlements), ylab = "settlements", xlab = "richness")
+dotchart(P.anal$richness, groups = P.anal$habitat, pch = as.numeric(P.anal$habitat), ylab = "habitat", xlab = "richness")
+IVs <- c("richness", "year_ct","site","settlements","habitat", "td_sc", "cos_td_rad", "sin_td_rad", "h_from_sunrise", "cos_hsun", "sin_hsun", "monitors_name",
+                        "wind", "precipitation", "temperature", "clouds")
+kable(summary(P.anal[,..IVs]))%>% kable_styling(font_size = 11)
+```
+
+no observation for all 4 weather variables.
+many NAs for sampling time of day variables.exclude from model.
+
+```{r richness data explore 2}
+pairs(P.anal[,lapply(X = .SD,FUN = as.numeric),.SDcols=IVs[1:12]])
+kable(cor(P.anal[,lapply(X = .SD,FUN = as.numeric),.SDcols=IVs[1:12]], use = "pairwise.complete.obs")) %>% kable_styling(font_size = 11)
+```
+
+Fit Poisson glm, check for existence of overdispersion
+
+```{r model specification richness, warning=FALSE}
+mdl_r.poiss.int <- glm(data = P.anal, formula = richness ~ settlements * year_ct + cos_td_rad + sin_td_rad , family = poisson)
+od <- mdl_r.poiss.int$deviance/mdl_r.poiss.int$df.residual
+print("Estimating overdispersion parameter phi: (Res. Dev.)/(n-p) where n=number of observations; p=number of parameters in the model.")
+print(paste0('od = ',od))
+```
+
+Overdispersion parameter is < 1. Poisson more appropriate. Compare Poisson and negative binomial.
+
+```{r}
+m0.po <- glm(data = P.anal, formula = richness ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad + site, family = poisson)
+m0.nb <- glm.nb(data = P.anal, formula = richness ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad + site)
+AIC(m0.po,m0.nb)
+print("poisson")
+plot(m0.po,which=1:3)
+print("neg bin")
+plot(m0.nb,which=1:3)
+```
+
+negative binomial did not converge due to underdispersion.
+
+```{r model specification richness 2}
+m0 <- m0.po
+me0 <- glmer(data = P.anal, formula =  richness ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad + (1|site), family = poisson)
+```
+
+mixed model did not converge. go with glm.
+
+```{r model specification richness 3}
+summary(m0)
+```
+
+perform stepwise model selection of poisson glm.
+
+```{r model selection richness}
+m1 <- step(m0)
+```
+
+keep removing terms because $\Delta AIC<2$.
+remove year.
+
+```{r model selection richness 2}
+m1 <- glm(data = P.anal, formula = richness ~ settlements + habitat + cos_td_rad, family = poisson)
+drop1(m1)
+```
+
+final model includes settlements, habitat, sampling time of year.
+Final model:
+
+```{r model selection richness 5}
+summary(m1)
+plot(m1, which = 1:3)
+```
+
+
+
+```{r model interpretation richness}
+summ(m1, exp=T, digits = 3)
+
+effplot_set <- plot_model_effect(P.anal = P.anal, m = m1, eff2plot = "settlements", export_plot = TRUE, fontname = SoN_fontname, outpath = output_path, plot_points = TRUE)
+iv_set_abs <- diff(effplot_set$data$richness)
+iv_set_rel <- iv_set_abs / as.data.table(effplot_set$data)[settlements=="Far",richness] * 100
+
+#Richness is 90.77% higher near settlements
+richness_set <- as.data.table(effplot_set$data$richness)
+(max(richness_set)/min(richness_set)-1)*100
+
+ 
+effplot_hab <- plot_model_effect(P.anal = P.anal, m = m1, eff2plot = "habitat", export_plot = TRUE, fontname = SoN_fontname, outpath = output_path, plot_points = TRUE)
+
+iv_hab_abs <- diff(effplot_hab$data$richness)
+iv_hab_rel <- iv_hab_abs / as.data.table(effplot_hab$data)[habitat=="Slope",richness] * 100
+
+#richness is 51.72% higher in wadi 
+richness_hab <- as.data.table(effplot_hab$data$richness)
+(max(richness_hab)/min(richness_hab)-1)*100
+
+m_coef <- coef(m1)
+X <- unique(data.table(samp_date = as_date(as.duration(P.anal$timediff_Jun21+172)),
+                       contrib = exp(m_coef["cos_td_rad"]*P.anal$cos_td_rad))[order(samp_date)])
+plot(X$samp_date, X$contrib,xlab = "time of year", ylab = "Effect on richness (multiplier)", type = "b")
+
+```
+
+**statistically significant higher richness near settlements and in the wadi compared to slope. No significant temporal trend.**
+
+Near plots have on average `r iv_set_abs` more species than far plots, which is `r iv_set_rel` percent higher.
+Wadi plots have on average `r iv_hab_abs` more species than far plots, which is `r iv_hab_rel` percent higher.
+
+#### geometric mean of abundance
+
+Explore data.
+Exclude time of day because of high number of NAs.
+
+```{r gma data explore}
+# exclude rare species in analysis
+P.anal <- copy(P_no_rare)
+
+print("GEOMETRIC MEAN ABUNDANCE WITHOUT RARE SPECIES")
+plot_alpha_diversity(P.anal[habitat=="Slope"], x_val = "settlements", y_val = "gma", ylab_val = "gma", xlab_val = "settlements (only slope habitat)")
+plot_alpha_diversity(P.anal[settlements=="Far" & year_ct>0], x_val = "habitat", y_val = "gma", ylab_val = "gma", xlab_val = "habitat (only far from settlements and without 2012)")
+
+dotchart(P.anal$gma, groups = P.anal$settlements, pch = as.numeric(P.anal$settlements), ylab = "settlements", xlab = "gma")
+dotchart(P.anal$gma, groups = P.anal$habitat, pch = as.numeric(P.anal$habitat), ylab = "habitat", xlab = "gma")
+IVs <- c("gma", "year_ct","site","settlements","habitat", "td_sc", "cos_td_rad", "sin_td_rad")
+kable(summary(P.anal[,..IVs]))%>% kable_styling(font_size = 11)
+```
+
+Exclude outlier plot with gma of nearly 10, from Ezuz Near Slope 11 2016-03-23. Richness of 4 and abundance of 61 (40 of which are house sparrow).
+Fit glm, compare gamma, gaussian (poisson inappropriate because response is not discrete)
+
+```{r model specification gma, warning=FALSE}
+P.anal <- P.anal[gma<9.5]
+mdl_g.gamma.int <- glm(data = P.anal, formula = gma ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad + site, family = Gamma)
+mdl_g.gauss.int <- glm(data = P.anal, formula = gma ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad + site, family = gaussian)
+plot(mdl_g.gamma.int,which = 1:3,sub.caption = "gamma")
+plot(mdl_g.gauss.int,which = 1:3,sub.caption = "gaussian")
+```
+
+Gamma seems better than gaussian.
+Fit fixed and mixed models.
+
+```{r model specification gma 2}
+m0 <- glm(data = P.anal, formula = gma ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad + site, family = Gamma)
+me0 <- glmer(data = P.anal, formula =  gma ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad + (1|site), family = Gamma)
+```
+
+Mixed model did not converge, use glm:
+
+```{r model specification gma 3}
+summary(m0)
+```
+
+perform stepwise model selection of Gamma model.
+
+```{r model selection gma}
+m1 <- step(m0)
+```
+
+Keep dropping terms because $\Delta AIC<2$.
+drop sine.
+
+```{r}
+m1 <- glm(data = P.anal, formula = gma ~ settlements * year_ct + habitat*year_ct + cos_td_rad + site, family = Gamma)
+drop1(m1)
+```
+
+drop cosine.
+
+```{r}
+m1 <- glm(data = P.anal, formula = gma ~ settlements * year_ct + habitat*year_ct + site, family = Gamma)
+drop1(m1)
+```
+
+drop site.
+
+```{r}
+m1 <- glm(data = P.anal, formula = gma ~ settlements * year_ct + habitat*year_ct, family = Gamma)
+drop1(m1)
+```
+
+Settlements * year and habitat * year remain.
+This is the final model:
+
+```{r model selection gma 2}
+summary(m1)
+plot(m1, which=1:3)
+```
+
+Fit also a model without interaction to understand whether there is a general trend in GMA:
+
+```{r}
+m2 <- glm(data = P.anal, formula = gma ~ settlements + habitat + year_ct, family = Gamma)
+summary(m2)
+```
+
+Overall temporal trend in GMA is not significant.
+So is difference in GMA between wadi and slope (but significant for settlement proximity).
+
+```{r model interpretation gma}
+summ(m1)
+plot_model_interaction(P.anal=P.anal, m=m1, eff2plot="year_ct", modvar2plot= "settlements", plot_points=FALSE, plot_residuals=FALSE, export_plot=TRUE, ylabel = NULL, fontname = SoN_fontname, fontsize=22, pdf_width=160, outpath = output_path, colors = c("#d95f02","#1b9e77"), legend_position = "bottom") 
+  
+interplot_set <- interact_plot(model = m1, data=P.anal, pred=year_ct, modx = settlements, interval = T, plot.points = F,
+                           jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                           partial.residuals = F, colors = "Qual1",                            main.title = "Temporal effect by proximity to settlements (only in slope habitat)",          line.colors = "black", point.alpha = 0.25, at = list(habitat = "Slope") ) 
+interplot_set
+
+# #Temporal trend near settlements - decrease of 27.88% total
+# set_time_near <- as.data.table(interplot_set$data)[settlements=="Near",gma]
+# (1 - min(set_time_near)/max(set_time_near)) * 100
+# 1 - 2.387221/3.310245
+# 
+# #Temporal trend far from settlements - increase of 19.69% total
+# set_time_far <- as.data.table(interplot_set$data)[settlements=="Far",gma]
+# (max(set_time_far)/min(set_time_far)-1)*100
+# 2.282433/1.906898  - 1
+# 
+# 
+# #Temporal trends
+# emm_year_ct <- emtrends(m1, specs = "settlements", var = "year_ct", type = "response")
+# print(emm_year_ct)
+# test_results_year_ct <- test(emm_year_ct, null = 0, adjust = "fdr")
+# print(test_results_year_ct)
+# 
+# #Means near vs. far
+# EMM <- emmeans(object = m1, ~settlements*year_ct)
+# print(EMM)
+# test_results_settlements <- test(pairs(EMM, by="year_ct"), by=NULL, adjust="fdr")
+# print(test_results_settlements)
+
+plot_model_interaction(P.anal=P.anal, m=m1, eff2plot="year_ct", modvar2plot= "habitat", plot_points=FALSE, plot_residuals=FALSE, export_plot=TRUE, ylabel = NULL, fontname = SoN_fontname, fontsize=22, pdf_width=160, outpath = output_path, legend_position = "bottom") 
+  
+interplot_hab <-  interact_plot(model = m1, data=P.anal, pred=year_ct, modx = habitat, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+partial.residuals = F, colors = "Qual1", main.title = "Temporal effect by habitat (only far from settlements)", line.colors = "black", point.alpha = 0.25, at = list(settlements = "Far"))
+
+interplot_hab
+
+# #Temporal trend in wadi - decrease of 30.88% total
+# wadi_time <- as.data.table(interplot_hab$data)[habitat=="Wadi",gma]
+# (1-min(wadi_time)/max(wadi_time))*100
+# 1 - 1.860282/2.691660
+# 
+# #Temporal trend in slope - increase of 19.69% total
+# slope_time <- as.data.table(interplot_hab$data)[habitat=="Slope",gma]
+# (max(slope_time)/min(slope_time)-1)*100
+# (2.282433/1.906898 - 1) * 100
+# 
+# #Temporal trends
+# emm_year_ct <- emtrends(m1, specs = "habitat", var = "year_ct", type = "response")
+# print(emm_year_ct)
+# test_results_year_ct <- test(emm_year_ct, null = 0, adjust = "fdr")
+# print(test_results_year_ct)
+# 
+# #Means near vs. far
+# EMM <- emmeans(object = m1, ~habitat*year_ct)
+# print(EMM)
+# test_results_habitat <- test(pairs(EMM, by="year_ct"), by=NULL, adjust="fdr")
+# print(test_results_habitat)
+
+```
+### test for overall trend:
+
+```{r model interpretation gma 2}
+emm <- emmeans(object = m1, ~settlements*year_ct*habitat)
+print(summary(emm))
+test_results <- contrast(object = emm, method = list(slope_far_minus_near = c(1,-1,0,0), far_slope_minus_wadi = c(1,0,-1,0)))
+print(test_results)
+print(coef(test_results))
+emm_summ <- as.data.table(summary(emm))
+iv_set_abs <- emm_summ[habitat=="Slope",.(settlements,emmean,resp_emmean = 1/emmean)][,diff(resp_emmean)]
+iv_set_rel <- iv_set_abs / emm_summ[habitat=="Slope" & settlements=="Far",1/emmean]*100
+```
+
+### test for difference of each trend from zero. Trends for distance from settlements:
+
+```{r}
+emm_year_ct_set <- emtrends(m1, specs = "settlements", var = "year_ct", type = "response")
+test_results_year_ct_set <- test(emm_year_ct_set, null = 0, adjust = "fdr")
+print(test_results_year_ct_set)
+
+```
+
+### test for difference of each trend from zero. Trends for habitat type:
+
+```{r}
+emm_year_ct_hab <- emtrends(m1, specs = "habitat", var = "year_ct", type = "response")
+test_results_year_ct_hab <- test(emm_year_ct_hab, null = 0, adjust = "fdr")
+print(test_results_year_ct_hab)
+
+```
+
+**Overall temporal trend in GMA is not significant.**
+
+**So is difference in GMA between wadi and slope (but significant for settlement proximity: higher near settlements).**
+
+**Significant opposing temporal trends for settlement proximity and habitat type:**
+
+GMA decreasing near settlements and increasing far from settlements (no statistically significant difference between the two in the last campaign).
+
+GMA is decreasing in Wadi habitat and increasing in slope habitat (no statistically significant difference between the two in the last campaign).
+
+On average, GMA is significantly higher in a near plot compared to a far plot by `r iv_set_abs` (`r iv_set_rel` percent) individuals per species (tested in slope habitat only; P<0.001). No significant difference between slope and wadi habitats (tested only far from settlements).
+
+#### abundance
+
+Explore data
+
+```{r abundance data explore}
+# exclude rare species in analysis
+P.anal <- copy(P_no_rare)
+
+print("ABUNDANCE WITHOUT RARE SPECIES")
+plot_alpha_diversity(P.anal[habitat=="Slope"], x_val = "settlements", y_val = "abundance", ylab_val = "abundance", xlab_val = "settlements (only slope habitat)")
+plot_alpha_diversity(P.anal[settlements=="Far" & year_ct>0], x_val = "habitat", y_val = "abundance", ylab_val = "abundance", xlab_val = "habitat (only far from settlements and without 2012)")
+
+
+dotchart(P.anal$abundance, groups = P.anal$settlements, pch = as.numeric(P.anal$settlements), ylab = "settlements", xlab = "abundance")
+dotchart(P.anal$abundance, groups = P.anal$habitat, pch = as.numeric(P.anal$habitat), ylab = "habitat", xlab = "abundance")
+IVs <- c("abundance", "year_ct","site","settlements","habitat", "td_sc", "cos_td_rad", "sin_td_rad")
+kable(summary(P.anal[,..IVs]))%>% kable_styling(font_size = 11)
+```
+
+remove outlier of extremely high abundance (56, next highest far from settlements is ~25) far from settlements.
+
+```{r model specification abundance, warning=FALSE, eval=FALSE}
+P.anal <- P.anal[!(settlements=="Far" & abundance==56)]
+mdl_a.po <- glm(data = P.anal, formula = abundance ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad + site, family = poisson)
+od <- mdl_a.po$deviance/mdl_a.po$df.residual
+print("Estimating overdispersion parameter phi: (Res. Dev.)/(n-p) where n=number of observations; p=number of parameters in the model.")
+print(paste0('od = ',od))
+plot(mdl_a.po,which = 1:2,sub.caption = "poisson")
+```
+
+PHI>1, hence choose negative binomial.
+Fit fixed and mixed models.
+Choose mixed model if possible, otherwise choose a model with fixed-effects only.
+
+```{r model specification abundance 2}
+m0 <- glm.nb(data = P.anal, formula = abundance ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad + site)
+me0 <- glmer.nb(data = P.anal, formula =  abundance ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad + (1|site))
+```
+
+Mixed model failed to converge. Use fixed-effects model.
+
+```{r model specification abundance 3}
+summary(m0)
+```
+
+model selection of glm.
+
+```{r model selection abundance}
+m1 <- step(m0)
+```
+
+final model includes settlements, habitat, sampling time of year and site.
+The final model:
+
+```{r model selection abundance 5}
+summary(m1)
+plot(m1, which = 1:3)
+```
+
+Interpretation of abundance model:
+
+```{r model interpretation abundance, warning=FALSE}
+summ(m1, exp=T, digits = 3)
+plot_model_effect(P.anal = P.anal, m = m1, eff2plot = "settlements", plot_points=TRUE, plot_residuals=FALSE, export_plot=TRUE, ylabel = NULL, fontname = SoN_fontname, fontsize=22, pdf_width=160, outpath = output_path)
+  
+effplot_set <- effect_plot(model = m1, data=P.anal, pred = settlements, interval = T, plot.points = F,
+                            jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                            partial.residuals = F, colors = "Qual1",
+                            main.title = "effect of proximity to settlements",
+                           line.colors = "black", point.alpha = 0.25)
+ effplot_set$layers[[2]]$geom_params$width <- 0.4
+
+#near abundance is 218.97% higher than far 
+iv_set_abs <- diff(effplot_set$data$abundance)
+iv_set_rel <- iv_set_abs / as.data.table(effplot_set$data)[settlements=="Far",abundance] * 100
+print(iv_set_rel)
+
+(max(effplot_set$data$abundance)/min(effplot_set$data$abundance)-1)*100
+
+
+plot_model_effect(P.anal = P.anal, m = m1, eff2plot = "habitat", plot_points=TRUE, plot_residuals=FALSE, export_plot=TRUE, ylabel = NULL, fontname = SoN_fontname, fontsize=22, pdf_width=160, outpath = output_path)
+  
+effplot_hab_abu <- effect_plot(model = m1, data=P.anal, pred = habitat, interval = T, plot.points = F,  jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4,
+                         partial.residuals = F, colors = "Qual1",
+                         main.title = "effect of habitat",
+                        line.colors = "black", point.alpha = 0.25) 
+
+effplot_hab_abu$layers[[2]]$geom_params$width <- 0.4
+
+#abundance in Wadi is 32.59% higher
+effplot_hab_abu$data$abundance
+(max(effplot_hab_abu$data$abundance)/min(effplot_hab_abu$data$abundance)-1)*100
+
+iv_hab_abs <- diff(effplot_hab_abu$data$abundance)
+iv_hab_rel <- iv_hab_abs/as.data.table(effplot_hab_abu$data)[habitat=="Slope",abundance] * 100
+print(iv_hab_abs)
+
+m_coef <- coef(m1)
+X <- unique(data.table(samp_date = as_date(as.duration(P.anal$timediff_Jun21+172)), contrib = exp(m_coef["cos_td_rad"]*P.anal$cos_td_rad))[order(samp_date)])
+plot(X$samp_date, X$contrib,xlab = "time of year", ylab = "Effect on abundance (multiplier)", type = "b")
+
+```
+
+**significantly higher abundance in wadi compared to slope, and near settlements compared to far from them.**
+
+**No temporal trend was detected in abundance.**
+
+Near plots have on average `r iv_set_abs` more individuals than far plots, which is `r iv_set_rel` percent higher.
+
+Wadi habitat plots have on average `r iv_hab_abs` more individuals than slope habitat plots, which is `r iv_hab_rel` percent higher.
+
+#### community analysis using package MVabund
+
+Explore single species observations, including mean-variance plot.
+There is a strong mean-var relationship, indicating that employing GLMs is the proper way to analyze, rather than OLS (assumption of homogeneity is violated).
+
+```{r explore single observations}
+abu_by_spp.highlands <- abu_by_spp[grepl("Highlands",unit),]
+abu_by_spp_no_rare.highlands <- abu_by_spp_no_rare[grepl("Highlands",unit),]
+
+spp <- abu_by_spp.highlands[,.SD[,(length(col_names)+1):ncol(abu_by_spp.highlands)]]
+spp_no_rare <- abu_by_spp_no_rare.highlands[,.SD[,(length(col_names)+1):ncol(abu_by_spp_no_rare.highlands)]]
+# filter out species with zero counts (were either not observed or are rare and were excluded)
+spp <- spp[,.SD,.SDcols = colSums(spp)>0]
+spp <- mvabund(spp)
+spp_no_rare <- spp_no_rare[,.SD,.SDcols = colSums(spp_no_rare)>0]
+spp_no_rare <- mvabund(spp_no_rare)
+
+env_data <- abu_by_spp_no_rare.highlands[,..col_names]
+env_data[,site:=factor(site)][,habitat:=factor(habitat)]
+
+try(expr = plot(spp_no_rare ~ abu_by_spp_no_rare.highlands$settlements,overall.main="raw abundances", transformation = "no"))
+try(expr = plot(spp_no_rare ~ abu_by_spp_no_rare.highlands$habitat,overall.main="raw abundances", transformation = "no"))
+
+print("abundance observations, aggregated into plots and species (i.e., several observations from the same species in the same plot are aggregated):")
+plot(sort(spp_no_rare[spp_no_rare>0]))
+print("zoom in on high abundance observations:")
+dotchart(sort(A_no_rare[grepl("Highlands",unit) & count_under_250>=30,count_under_250]))
+meanvar.plot(spp_no_rare, xlab = "mean abundance of a given species across sites", ylab = "variance of the abundance of a given species across sites")
+```
+
+start model specification:
+
+```{r community analysis MVabund model specification}
+mva_m0.po <- manyglm(formula = spp_no_rare ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad, family = "poisson", data = env_data)
+mva_m0.nb <- manyglm(formula = spp_no_rare ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad, family = "negative.binomial", data = env_data)
+aic_dt <- data.table(nb = mva_m0.nb$aic, po=mva_m0.po$aic)
+colMeans(aic_dt)
+print("POISSON")
+plot(mva_m0.po, which=1:3)
+print("NEGATIVE BINOMIAL")
+plot(mva_m0.nb, which=1:3)
+```
+
+negative binomial model is better than poisson according to residuals and AIC comparison.
+
+```{r community analysis MVabund model specification 2}
+mva_m0 <- mva_m0.nb
+mva_m1 <- manyglm(formula = spp_no_rare ~ settlements * year_ct + habitat*year_ct + cos_td_rad + sin_td_rad +site, data = env_data)
+aic_dt$nb1 <- mva_m1$aic
+colMeans(aic_dt)
+```
+
+The addition of the explanatory variable 'site' is improving the AIC of the model very slightly. Choose to exclude.
+stepwise selection of model:
+
+```{r community analysis MVabund model selection}
+drop1(mva_m0)
+```
+
+drop interaction of habitat with year.
+
+```{r community analysis MVabund model selection 2}
+mva_m1 <- manyglm(formula = spp_no_rare ~ settlements * year_ct + habitat +cos_td_rad + sin_td_rad, data = env_data)
+drop1(mva_m1)
+```
+
+drop interaction of settlements with year.
+
+```{r community analysis MVabund model selection 3}
+mva_m1 <- manyglm(formula = spp_no_rare ~ settlements + year_ct + habitat +cos_td_rad + sin_td_rad, data = env_data)
+drop1(mva_m1)
+```
+
+drop sine.
+
+```{r community analysis MVabund model selection 4}
+mva_m1 <- manyglm(formula = spp_no_rare ~ settlements + year_ct + habitat +cos_td_rad, data = env_data)
+drop1(mva_m1)
+```
+
+final model includes settlements, habitat, year and sampling time of year.
+
+```{r community analysis MVabund model validation}
+plot(mva_m1, which=1:3)
+```
+
+```{r community analysis MVabund model interpretation}
+# summ_m1 <- summary(mva_m1)
+# saveRDS(summ_m1, file = "../output/Negev_MVabund_summary_output_999iter.rds")
+# anov_m1.uni <- anova(mva_m1, p.uni = "adjusted", nBoot = 999, show.time = "all")
+# saveRDS(anov_m1.uni, file = "../output/Negev_MVabund_anova_output_999iter.rds")
+summ_m1 <- readRDS(file = "../output/Negev_MVabund_summary_output_999iter.rds")
+print(summ_m1)
+anov_m1.uni <- readRDS(file = "../output/Negev_MVabund_anova_output_999iter.rds")
+print(anov_m1.uni)
+```
+
+**All factors (settlements, habitat, time of year) have a statistically significant effect on community composition.**
+
+```{r community analysis MVabund model interpretation - plot coefficients}
+coefp <- merge(data.table(t(coef(mva_m1)/log(2)),keep.rownames=TRUE), data.table(t(anov_m1.uni$uni.p), keep.rownames = TRUE), by = "rn") # coefficients are on log2 scale to simplify interpretation, yet keep presenetation on log scale rather than linear. The link function used for poisson is log -> above 0 is a positive trend and below 0 is negative trend
+
+# add total species abundance
+coefp <- merge(coefp,as.data.table(colSums(spp_no_rare),keep.rownames = TRUE), by.x = "rn", by.y = "V1")
+
+# add hebrew name and traits
+sci_heb <- unique(A[,.(SciName,HebName)])
+sci_heb[,SciName:=make.names(SciName)]
+coefp <- merge(coefp, sci_heb, by.x = "rn", by.y = "SciName")
+
+# set column names based on the predictor variables
+colnames(coefp)[grepl("rn",colnames(coefp))] <- "SciName"
+colnames(coefp)[grepl("Intercept).x",colnames(coefp))] <- "intercept.coef"
+colnames(coefp)[grepl("Intercept).y",colnames(coefp))] <- "intercept.p"
+colnames(coefp)[colnames(coefp)=="settlementsNear"] <- "settlementsNear.coef"
+colnames(coefp)[colnames(coefp)=="settlements"] <- "settlements.p"
+colnames(coefp)[colnames(coefp)=="agricultureNear"] <- "agricultureNear.coef"
+colnames(coefp)[colnames(coefp)=="agriculture"] <- "agriculture.p"
+colnames(coefp)[grepl("cos_td_rad.x",colnames(coefp))] <- "cos_td_rad.coef"
+colnames(coefp)[colnames(coefp)=="cos_td_rad.y"] <- "cos_td_rad.p"
+colnames(coefp)[grepl("sin_td_rad.x",colnames(coefp))] <- "sin_td_rad.coef"
+colnames(coefp)[grepl("sin_td_rad.y",colnames(coefp))] <- "sin_td_rad.p"
+colnames(coefp)[colnames(coefp)=="year_ct.x"] <- "year_ct.coef"
+colnames(coefp)[colnames(coefp)=="year_ct.y"] <- "year_ct.p"
+colnames(coefp)[colnames(coefp)=="V2"] <- "species_abundance"
+colnames(coefp)[colnames(coefp)=="dunesshifting"] <- "dunesShifting.coef"
+colnames(coefp)[colnames(coefp)=="dunes"] <- "dunes.p"
+colnames(coefp)[colnames(coefp)=="site"] <- "site.p"
+colnames(coefp)[colnames(coefp)=="subunitCarmel"] <- "subunitCarmel.coef"
+colnames(coefp)[colnames(coefp)=="subunitGalilee"] <- "subunitGalilee.coef"
+colnames(coefp)[colnames(coefp)=="subunit"] <- "subunit.p"
+colnames(coefp)[colnames(coefp)=="habitatWadi"] <- "habitatWadi.coef"
+colnames(coefp)[colnames(coefp)=="habitat"] <- "habitat.p"
+
+
+plot_coefs_settle <- plot_coefs_with_traits_for_publication(D = A_no_rare[grepl("Highlands",unit)],
+                                     cp = coefp[,.(SciName,settlementsNear.coef,settlements.p,species_abundance)],
+                                     plot_title = "Effect of proximity to settlements on species abundance",
+                                     plot_xlabel = expression(paste("coefficient of NEAR settlements, (log"[2]," scale)")),
+                                     mark_batha = TRUE,
+                                     show_legend = FALSE,
+                                                export_plot = TRUE,
+                                                fontname = SoN_fontname,
+                                                effect_str = "settlements",
+                                                outpath = output_path)
+plot_coefs_settle
+
+
+
+plot_coefs_year <- plot_coefs_with_traits_for_publication(D = A_no_rare[grepl("Highlands",unit)],
+                                     cp = coefp[,.(SciName,year_ct.coef,year_ct.p,species_abundance)],
+                                     plot_title = "Temporal effect on species abundance",
+                                     plot_xlabel = expression(paste("coefficient of year counter, (log"[2]," scale)")),
+                                  mark_batha = TRUE,
+                                     show_legend = FALSE,
+                                                export_plot = TRUE,
+                                                fontname = SoN_fontname,
+                                                effect_str = "year_ct",
+                                                outpath = output_path)
+plot_coefs_year
+
+plot_coefs_habitat <- plot_coefs_with_traits_for_publication(D = A_no_rare[grepl("Highlands",unit)],
+                                     cp = coefp[,.(SciName,habitatWadi.coef,habitat.p,species_abundance)],
+                                     plot_title = "Effect of habitat on species abundance",
+                                     plot_xlabel = expression(paste("coefficient of WADI habitat, (log"[2]," scale)")),
+                                     mark_batha = TRUE,show_legend = FALSE,
+                                                export_plot = TRUE,
+                                                fontname = SoN_fontname,
+                                                effect_str = "habitat",
+                                                outpath = output_path)
+plot_coefs_habitat
+
+
+```
+
+**Significant effect of settlement proximity: synanthrope / invasive species near settlements, batha specialists far from settlements.**
+**Significant effect of habitat type, where synanthropes tend to be in the Wadi and non-synanthropes in both habitats.**
+**Marginally significant temporal trend, and indeed no single species is showing a statistically significant increase / decrease.**
+
+```{r community analysis MVabund model interpretation - single species models}
+####Spilopelia senegalensis####
+
+d.Spilopelia.senegalensis <- cbind(env_data,data.table(Spilopelia.senegalensis = spp_no_rare[,"Spilopelia.senegalensis"]))
+d.Spilopelia.senegalensis <- d.Spilopelia.senegalensis[site %in% d.Spilopelia.senegalensis[,.(totabu=sum(Spilopelia.senegalensis)), by=site][totabu>0,site]]
+m.Spilopelia.senegalensis <- glm.nb(formula = Spilopelia.senegalensis~settlements + year_ct + habitat + cos_td_rad, data = d.Spilopelia.senegalensis)
+print("Spilopelia senegalensis")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Spilopelia.senegalensis"])
+print("species-specific glm")
+print(coef(m.Spilopelia.senegalensis))
+
+Spilopelia_eff_plot <- effect_plot(model = m.Spilopelia.senegalensis, data=d.Spilopelia.senegalensis, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Spilopelia senegalensis")
+
+#There are no observations near settlements
+Spilopelia_eff_plot$data$Spilopelia.senegalensis
+spilo_set <- as.data.table(Spilopelia_eff_plot$data$Spilopelia.senegalensis)
+(max(spilo_set)/min(spilo_set)-1)*100
+
+
+####Pycnonotus xanthopygos####
+
+d.Pycnonotus.xanthopygos <- cbind(env_data,data.table(Pycnonotus.xanthopygos = spp_no_rare[,"Pycnonotus.xanthopygos"]))
+d.Pycnonotus.xanthopygos <- d.Pycnonotus.xanthopygos[site %in% d.Pycnonotus.xanthopygos[,.(totabu=sum(Pycnonotus.xanthopygos)), by=site][totabu>0,site]]
+m.Pycnonotus.xanthopygos <- glm.nb(formula = Pycnonotus.xanthopygos~settlements + year_ct + habitat + cos_td_rad, data = d.Pycnonotus.xanthopygos)
+print("Pycnonotus xanthopygos")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Pycnonotus.xanthopygos"])
+print("species-specific glm")
+print(coef(m.Pycnonotus.xanthopygos))
+
+Pycnonotus_set_eff_plot <- effect_plot(model = m.Pycnonotus.xanthopygos, data=d.Pycnonotus.xanthopygos, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Pycnonotus xanthopygos")
+
+
+print(Pycnonotus_set_eff_plot$data$Pycnonotus.xanthopygos)
+
+# abundance in near is 5090.93% higher compared to far
+(max(Pycnonotus_set_eff_plot$data$Pycnonotus.xanthopygos)/min(Pycnonotus_set_eff_plot$data$Pycnonotus.xanthopygos)-1)*100
+1.24582328 / 0.02379584  - 1
+
+# or 27.33 fold higher
+
+1.24582328 / 0.02379584
+
+pycno.near <- d.Pycnonotus.xanthopygos[d.Pycnonotus.xanthopygos$settlements == "Near",]
+pycno.far <- d.Pycnonotus.xanthopygos[d.Pycnonotus.xanthopygos$settlements == "Far",]
+
+sum(pycno.near$Pycnonotus.xanthopygos)
+sum(pycno.far$Pycnonotus.xanthopygos)
+
+
+Pycnonotus_hab_eff_plot <- effect_plot(model = m.Pycnonotus.xanthopygos, data=d.Pycnonotus.xanthopygos, pred = habitat, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Pycnonotus xanthopygos")
+
+print(Pycnonotus_hab_eff_plot$data$Pycnonotus.xanthopygos)
+
+# abundance in wadi is 755.12% higher 
+(max(Pycnonotus_hab_eff_plot$data$Pycnonotus.xanthopygos)/min(Pycnonotus_hab_eff_plot$data$Pycnonotus.xanthopygos)-1)*100
+0.20348365 / 0.02379584  - 1
+
+# or 8.55 fold higher
+
+0.20348365 / 0.02379584
+
+pycno.wadi <- d.Pycnonotus.xanthopygos[d.Pycnonotus.xanthopygos$habitat == "Wadi",]
+pycno.slope <- d.Pycnonotus.xanthopygos[d.Pycnonotus.xanthopygos$habitat == "Slope",]
+
+sum(pycno.wadi$Pycnonotus.xanthopygos)
+sum(pycno.slope$Pycnonotus.xanthopygos)
+
+
+####Passer domesticus - דרור הבית####
+
+d.Passer.domesticus <- cbind(env_data,data.table(Passer.domesticus = spp_no_rare[,"Passer.domesticus"]))
+d.Passer.domesticus <- d.Passer.domesticus[site %in% d.Passer.domesticus[,.(totabu=sum(Passer.domesticus)), by=site][totabu>0,site]]
+m.Passer.domesticus <- glm.nb(formula = Passer.domesticus~settlements + year_ct + habitat + cos_td_rad, data = d.Passer.domesticus)
+print("Passer domesticus")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Passer.domesticus"])
+print("species-specific glm")
+print(coef(m.Passer.domesticus))
+
+Passer_eff_plot <- effect_plot(model = m.Passer.domesticus, data=d.Passer.domesticus, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Passer domesticus")
+
+passer_far <- as.data.table(d.Passer.domesticus[d.Passer.domesticus$settlements=="Far",])
+passer_near <- as.data.table(d.Passer.domesticus[d.Passer.domesticus$settlements=="Near",])
+
+sum(passer_far$Passer.domesticus)
+sum(passer_near$Passer.domesticus)
+
+print(Passer_eff_plot$data$Passer.domesticus)
+
+# abundance in near is 2633.43% higher compared to far
+(max(Passer_eff_plot$data$Passer.domesticus)/min(Passer_eff_plot$data$Passer.domesticus)-1)*100
+13.0050380 / 0.4757746 - 1
+
+# or 27.33 fold higher
+
+13.0050380 / 0.4757746
+
+####Corvus cornix - עורב אפור####
+
+d.Corvus.cornix <- cbind(env_data,data.table(Corvus.cornix = spp_no_rare[,"Corvus.cornix"]))
+d.Corvus.cornix <- d.Corvus.cornix[site %in% d.Corvus.cornix[,.(totabu=sum(Corvus.cornix)), by=site][totabu>0,site]]
+m.Corvus.cornix <- glm.nb(formula = Corvus.cornix~settlements + year_ct + habitat + cos_td_rad, data = d.Corvus.cornix)
+print("Corvus cornix")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Corvus.cornix"])
+print("species-specific glm")
+print(coef(m.Corvus.cornix))
+
+Corvus_eff_plot <- effect_plot(model = m.Corvus.cornix, data=d.Corvus.cornix, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Corvus cornix")
+
+print(Corvus_eff_plot$data$Corvus.cornix)
+
+# abundance in near is 1758.13% higher compared to far
+(max(Corvus_eff_plot$data$Corvus.cornix)/min(Corvus_eff_plot$data$Corvus.cornix)-1)*100
+0.93466403 / 0.05030111 - 1
+
+# or 18.58 fold higher
+
+0.93466403 / 0.05030111
+
+corvus.far <- as.data.table(d.Corvus.cornix[d.Corvus.cornix$settlements=="Far",])
+corvus.near <- as.data.table(d.Corvus.cornix[d.Corvus.cornix$settlements=="Near",])
+
+sum(corvus.far$Corvus.cornix)
+sum(corvus.near$Corvus.cornix)
+
+####Cinnyris osea####
+
+d.Cinnyris.osea <- cbind(env_data,data.table(Cinnyris.osea = spp_no_rare[,"Cinnyris.osea"]))
+d.Cinnyris.osea <- d.Cinnyris.osea[site %in% d.Cinnyris.osea[,.(totabu=sum(Cinnyris.osea)), by=site][totabu>0,site]]
+m.Cinnyris.osea <- glm.nb(formula = Cinnyris.osea~settlements + year_ct + habitat + cos_td_rad, data = d.Cinnyris.osea)
+print("Cinnyris osea")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Cinnyris.osea"])
+print("species-specific glm")
+print(coef(m.Cinnyris.osea))
+
+Cinnyris_eff_plot <- effect_plot(model = m.Cinnyris.osea, data=d.Cinnyris.osea, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Cinnyris osea")
+
+print(Cinnyris_eff_plot$data$Cinnyris.osea)
+
+# abundance in near is 1466.89% higher compared to far
+(max(Cinnyris_eff_plot$data$Cinnyris.osea)/min(Cinnyris_eff_plot$data$Cinnyris.osea)-1)*100
+0.37610562 / 0.02400332  - 1
+
+# or 15.66 fold higher
+0.37610562 / 0.02400332
+
+cinn.far <- as.data.table(d.Cinnyris.osea[d.Cinnyris.osea$settlements=="Far",])
+cinn.near <- as.data.table(d.Cinnyris.osea[d.Cinnyris.osea$settlements=="Near",])
+
+sum(cinn.far$Cinnyris.osea)
+sum(cinn.near$Cinnyris.osea)
+```
+
+
+```{r community analysis MVabund model interpretation - single species models strdec}
+####Streptopelia decaocto - תור צווארון####
+
+d.Streptopelia.decaocto <- cbind(env_data,data.table(Streptopelia.decaocto = spp_no_rare[,"Streptopelia.decaocto"]))
+d.Streptopelia.decaocto <- d.Streptopelia.decaocto[site %in% d.Streptopelia.decaocto[,.(totabu=sum(Streptopelia.decaocto)), by=site][totabu>0,site]]
+m.Streptopelia.decaocto <- glm.nb(formula = Streptopelia.decaocto~settlements + year_ct + habitat + cos_td_rad, data = d.Streptopelia.decaocto)
+print("Streptopelia.decaocto")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Streptopelia.decaocto"])
+print("species-specific glm")
+print(coef(m.Streptopelia.decaocto))
+
+Streptopelia_set_eff_plot <- effect_plot(model = m.Streptopelia.decaocto, data=d.Streptopelia.decaocto, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Streptopelia decaocto")
+Streptopelia_set_eff_plot
+
+print(Streptopelia_set_eff_plot$data$Streptopelia.decaocto)
+
+# abundance in near is 471.41% higher compared to far
+(max(Streptopelia_set_eff_plot$data$Streptopelia.decaocto)/min(Streptopelia_set_eff_plot$data$Streptopelia.decaocto)-1)*100
+1.82218 / 0.31889  - 1
+
+# or 5.71 fold higher
+
+1.82218 / 0.31889 
+
+strep.far <- as.data.table(d.Streptopelia.decaocto[d.Streptopelia.decaocto$settlements=="Far",])
+strep.near <- as.data.table(d.Streptopelia.decaocto[d.Streptopelia.decaocto$settlements=="Near",])
+
+sum(strep.far$Streptopelia.decaocto)
+sum(strep.near$Streptopelia.decaocto)
+
+
+Streptopelia_hab_eff_plot <- effect_plot(model = m.Streptopelia.decaocto, data=d.Streptopelia.decaocto, pred = habitat, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Streptopelia decaocto")
+Streptopelia_hab_eff_plot
+
+print(Streptopelia_hab_eff_plot$data$Streptopelia.decaocto)
+
+# abundance in wadi is 393.12% higher 
+(max(Streptopelia_hab_eff_plot$data$Streptopelia.decaocto)/min(Streptopelia_hab_eff_plot$data$Streptopelia.decaocto)-1)*100
+1.572511 / 0.318890  - 1
+
+# or 4.93 fold higher
+1.572511 / 0.31889 
+
+strep.wadi <- as.data.table(d.Streptopelia.decaocto[d.Streptopelia.decaocto$habitat=="Wadi",])
+strep.slope <- as.data.table(d.Streptopelia.decaocto[d.Streptopelia.decaocto$habitat=="Slope",])
+
+sum(strep.wadi$Streptopelia.decaocto)
+sum(strep.slope$Streptopelia.decaocto)
+```
+
+
+```{r community analysis MVabund model interpretation - single species models2}
+####Columba livia - יונת סלעים####
+
+d.Columba.livia <- cbind(env_data,data.table(Columba.livia = spp_no_rare[,"Columba.livia"]))
+d.Columba.livia <- d.Columba.livia[site %in% d.Columba.livia[,.(totabu=sum(Columba.livia)), by=site][totabu>0,site]]
+m.Columba.livia <- glm.nb(formula = Columba.livia~settlements + year_ct + habitat + cos_td_rad, data = d.Columba.livia)
+print("Columba livia")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Columba.livia"])
+print("species-specific glm")
+print(coef(m.Columba.livia))
+
+Columba_eff_plot <- effect_plot(model = m.Columba.livia, data=d.Columba.livia, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Columba livia")
+
+Columba_eff_plot
+
+print(Columba_eff_plot$data$Columba.livia)
+
+# abundance in near is 304.22% higher compared to far
+(max(Columba_eff_plot$data$Columba.livia)/min(Columba_eff_plot$data$Columba.livia)-1)*100
+2.3908887 / 0.5914683   - 1
+
+# or 4.04 fold higher
+2.3908887 / 0.5914683  
+
+columba.far <- as.data.table(d.Columba.livia[d.Columba.livia$settlements=="Far",])
+columba.near <- as.data.table(d.Columba.livia[d.Columba.livia$settlements=="Near",])
+
+sum(columba.far$Columba.livia)
+sum(columba.near$Columba.livia)
+
+
+####Galerida cristat - עפרוני מצויץ####
+d.Galerida.cristata <- cbind(env_data,data.table(Galerida.cristata = spp_no_rare[,"Galerida.cristata"]))
+d.Galerida.cristata <- d.Galerida.cristata[site %in% d.Galerida.cristata[,.(totabu=sum(Galerida.cristata)), by=site][totabu>0,site]]
+m.Galerida.cristata <- glm.nb(formula = Galerida.cristata~settlements + year_ct + habitat + cos_td_rad, data = d.Galerida.cristata)
+print("Galerida cristata")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Galerida.cristata"])
+print("species-specific glm")
+print(coef(m.Galerida.cristata))
+
+Galerida_eff_plot <- effect_plot(model = m.Galerida.cristata, data=d.Galerida.cristata, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Galerida cristata")
+
+print(Galerida_eff_plot$data$Galerida.cristata)
+
+# abundance in far is 28.69% higher compared to near
+(max(Galerida_eff_plot$data$Galerida.cristata)/min(Galerida_eff_plot$data$Galerida.cristata)-1)*100
+2.186070  / 1.698702 - 1
+
+# or 1.28 fold higher
+2.186070  / 1.698702 
+
+
+galerida.far <- as.data.table(d.Galerida.cristata[d.Galerida.cristata$settlements=="Far",])
+galerida.near <- as.data.table(d.Galerida.cristata[d.Galerida.cristata$settlements=="Near",])
+
+sum(galerida.far$Galerida.cristata)
+sum(galerida.near$Galerida.cristata)
+
+####Lanius excubitor - חנקן אדום חזה####
+
+d.Lanius.excubitor <- cbind(env_data,data.table(Lanius.excubitor = spp_no_rare[,"Lanius.excubitor"]))
+d.Lanius.excubitor <- d.Lanius.excubitor[site %in% d.Lanius.excubitor[,.(totabu=sum(Lanius.excubitor)), by=site][totabu>0,site]]
+m.Lanius.excubitor <- glm.nb(formula = Lanius.excubitor~settlements + year_ct + habitat + cos_td_rad, data = d.Lanius.excubitor)
+print("Lanius excubitor")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Lanius.excubitor"])
+print("species-specific glm")
+print(coef(m.Lanius.excubitor))
+
+Lanius_eff_plot <- effect_plot(model = m.Lanius.excubitor, data=d.Lanius.excubitor, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Lanius excubitor")
+
+print(Lanius_eff_plot$data$Lanius.excubitor)
+
+# abundance in far is 101.90% higher compared to near
+(max(Lanius_eff_plot$data$Lanius.excubitor)/min(Lanius_eff_plot$data$Lanius.excubitor)-1)*100
+0.09023377/0.04469057 - 1
+
+# or 2.02 fold higher
+0.09023377/0.04469057 
+
+lanius.far <- as.data.table(d.Lanius.excubitor[d.Lanius.excubitor$settlements=="Far",])
+lanius.near <- as.data.table(d.Lanius.excubitor[d.Lanius.excubitor$settlements=="Near",])
+
+sum(lanius.far$Lanius.excubitor)
+sum(lanius.near$Lanius.excubitor)
+
+####Oenanthe lugens####
+
+d.Oenanthe.lugens <- cbind(env_data,data.table(Oenanthe.lugens = spp_no_rare[,"Oenanthe.lugens"]))
+d.Oenanthe.lugens <- d.Oenanthe.lugens[habitat %in% d.Oenanthe.lugens[,.(totabu=sum(Oenanthe.lugens)), by=habitat][totabu>0,habitat]]
+m.Oenanthe.lugens <- glm.nb(formula = Oenanthe.lugens~settlements + year_ct + habitat + cos_td_rad, data = d.Oenanthe.lugens)
+print("Oenanthe lugens")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Oenanthe.lugens"])
+print("species-specific glm")
+print(coef(m.Oenanthe.lugens))
+
+Oenanthe_eff_plot <- effect_plot(model = m.Oenanthe.lugens, data=d.Oenanthe.lugens, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Oenanthe lugens")
+
+print(Oenanthe_eff_plot$data$Oenanthe.lugens)
+
+# abundance in far is 305.45% higher compared to near
+(max(Oenanthe_eff_plot$data$Oenanthe.lugens)/min(Oenanthe_eff_plot$data$Oenanthe.lugens)-1)*100
+0.21191300  / 0.05226611 - 1
+
+# or 4.05 fold higher
+0.21191300  / 0.05226611 
+
+oenanthe.far <- as.data.table(d.Oenanthe.lugens[d.Oenanthe.lugens$settlements=="Far",])
+oenanthe.near <- as.data.table(d.Oenanthe.lugens[d.Oenanthe.lugens$settlements=="Near",])
+
+sum(oenanthe.far$Oenanthe.lugens)
+sum(oenanthe.near$Oenanthe.lugens)
+
+####Ammomanes deserti - עפרוני מדבר####
+
+d.Ammomanes.deserti <- cbind(env_data,data.table(Ammomanes.deserti = spp_no_rare[,"Ammomanes.deserti"]))
+d.Ammomanes.deserti <- d.Ammomanes.deserti[habitat %in% d.Ammomanes.deserti[,.(totabu=sum(Ammomanes.deserti)), by=habitat][totabu>0,habitat]]
+m.Ammomanes.deserti <- glm.nb(formula = Ammomanes.deserti~settlements + year_ct + habitat + cos_td_rad, data = d.Ammomanes.deserti)
+print("Ammomanes deserti")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Ammomanes.deserti"])
+print("species-specific glm")
+print(coef(m.Ammomanes.deserti))
+
+Ammomanes_eff_plot <- effect_plot(model = m.Ammomanes.deserti, data=d.Ammomanes.deserti, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Ammomanes deserti")
+
+print(Ammomanes_eff_plot$data$Ammomanes.deserti)
+
+# abundance in far is 1076.02% higher compared to near
+(max(Ammomanes_eff_plot$data$Ammomanes.deserti)/min(Ammomanes_eff_plot$data$Ammomanes.deserti)-1)*100
+1.6689846/0.1419171 - 1
+
+# or 11.76 fold higher
+1.6689846/0.1419171 
+
+ammom.far <- as.data.table(d.Ammomanes.deserti[d.Ammomanes.deserti$settlements=="Far",])
+ammom.near <- as.data.table(d.Ammomanes.deserti[d.Ammomanes.deserti$settlements=="Near",])
+
+sum(ammom.far$Ammomanes.deserti)
+sum(ammom.near$Ammomanes.deserti)
+
+####Scotocerca inquieta - מדברון####
+
+d.Scotocerca.inquieta <- cbind(env_data,data.table(Scotocerca.inquieta = spp_no_rare[,"Scotocerca.inquieta"]))
+d.Scotocerca.inquieta <- d.Scotocerca.inquieta[habitat %in% d.Scotocerca.inquieta[,.(totabu=sum(Scotocerca.inquieta)), by=habitat][totabu>0,habitat]]
+m.Scotocerca.inquieta <- glm.nb(formula = Scotocerca.inquieta~settlements + year_ct + habitat + cos_td_rad, data = d.Scotocerca.inquieta)
+print("Scotocerca inquieta")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Scotocerca.inquieta"])
+print("species-specific glm")
+print(coef(m.Scotocerca.inquieta))
+
+Scotocerca_eff_plot <- effect_plot(model = m.Scotocerca.inquieta, data=d.Scotocerca.inquieta, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Scotocerca inquieta")
+
+print(Scotocerca_eff_plot$data$Scotocerca.inquieta)
+
+# abundance in far is 1234.93% higher compared to near
+(max(Scotocerca_eff_plot$data$Scotocerca.inquieta)/min(Scotocerca_eff_plot$data$Scotocerca.inquieta)-1)*100
+0.29014870/0.02173499 - 1
+
+# or 13.34 fold higher
+0.29014870/0.02173499 
+
+
+####Prinia gracilis - פשוש####
+
+d.Prinia.gracilis <- cbind(env_data,data.table(Prinia.gracilis = spp_no_rare[,"Prinia.gracilis"]))
+d.Prinia.gracilis <- d.Prinia.gracilis[site %in% d.Prinia.gracilis[,.(totabu=sum(Prinia.gracilis)), by=site][totabu>0,site]]
+m.Prinia.gracilis <- glm.nb(formula = Prinia.gracilis~settlements + year_ct + habitat + cos_td_rad, data = d.Prinia.gracilis)
+print("Prinia gracilis")
+print("manyglm coefficients")
+print(coef(mva_m1)[,"Prinia.gracilis"])
+print("species-specific glm")
+print(coef(m.Prinia.gracilis))
+
+Prinia_eff_plot <- effect_plot(model = m.Prinia.gracilis, data=d.Prinia.gracilis, pred = habitat, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Prinia gracilis")
+
+print(Prinia_eff_plot$data$Prinia.gracilis)
+
+# abundance in wadi is 1282.48% higher
+(max(Prinia_eff_plot$data$Prinia.gracilis)/min(Prinia_eff_plot$data$Prinia.gracilis)-1)*100
+0.40704610/0.02944298 - 1
+
+# or 13.82 fold higher
+0.40704610/0.02944298 
+
+prinia.wadi <- as.data.table(d.Prinia.gracilis[d.Prinia.gracilis$habitat=="Wadi",])
+prinia.slope <- as.data.table(d.Prinia.gracilis[d.Prinia.gracilis$habitat=="Slope",])
+
+sum(prinia.wadi$Prinia.gracilis)
+sum(prinia.slope$Prinia.gracilis)
+
+Prinia_eff_plot_set <- effect_plot(model = m.Prinia.gracilis, data=d.Prinia.gracilis, pred = settlements, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Spatial effect on abundance of Prinia gracilis")
+
+print(Prinia_eff_plot_set$data$Prinia.gracilis)
+
+# abundance in near is 2107.02% higher compared to far
+(max(Prinia_eff_plot_set$data$Prinia.gracilis)/min(Prinia_eff_plot_set$data$Prinia.gracilis)-1)*100
+0.64981493/0.02944298 - 1
+
+# or 22.07 fold higher
+0.64981493/0.02944298 
+
+
+```
+```{r export manyglm p-values}
+write.csv(coefp[,.(SciName,HebName,year_ct.p, settlements.p, habitat.p)], file = "../output/negev_highlands/species_composition_p_values.csv", row.names = F, fileEncoding = "MS-HEBR")
+```
+
+### Session information
+
+```{r}
+session_info()
+```
+

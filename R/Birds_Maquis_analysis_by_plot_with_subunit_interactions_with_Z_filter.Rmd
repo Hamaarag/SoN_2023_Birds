@@ -1,0 +1,751 @@
+---
+title: "Birds_Maquis_analysis_by_plot_with_subunit_interactions"
+author: "Ron Chen"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+#knitr::opts_chunk$set(dev = "cairo_pdf", dev.args=list(cairo_pdf = list(family='Arial')))
+
+# pcks <- list('devtools','rlang','ggplot2','data.table', 'dplyr','mvabund','kableExtra','lme4','MASS','vegan',
+#              'jtools', 'interactions','car','ecoCopula','ggrepel','emmeans')
+# 
+# sapply(pcks, require, character = TRUE)
+library (devtools)
+library (rlang)
+library (ggplot2)
+library (data.table)
+library (dplyr)
+library (mvabund)
+library (kableExtra)
+library (lme4)
+library (MASS)
+library (vegan)
+library (jtools)
+library (interactions)
+library (car)
+library (ecoCopula)
+library (ggrepel)
+library (emmeans)
+
+source("plot_individual_species_maquis.R")
+source("plot_model_effect.R")
+source("prepare_bird_data_with_Z_filter.R")
+source("plot_alpha_diversity.R")
+source("plot_coefs_with_traits.R")
+source("plot_coefs_with_traits_for_publication.R")
+source("plot_two_coefs_with_traits.R")
+source("multiplot.R")
+source("plot_model_interaction.R")
+source("plot_model_interaction_cat.R")
+# source_url("https://raw.githubusercontent.com/ronchen1/ron_functions/d2d0bab4dc65f29e53d316ae4098d0469711905b/R/multiplot.R")
+
+# define font name
+SoN_fontname <- "Almoni ML v5 AAA"
+
+# Define the output folder path
+output_path <- file.path("..","output", "maquis")
+
+# Check if the output folder exists, and create it if it doesn't
+if (!dir.exists(output_path)) {
+  dir.create(output_path, recursive = TRUE)
+  message("Folder '", output_path, "' has been created.")
+} else {
+  message("Folder '", output_path, "' already exists.")
+}
+```
+
+```{r load using function}
+out <- prepare_bird_data()
+var_names <- names(out)
+for (i in 1:length(var_names)) {
+  assign(var_names[i], out[[i]])
+}
+rm(out)
+P <- P_byplot[grepl("Maquis",unit),][order(year,site)][,site:=factor(site)][,subunit:=factor(subunit)]
+P_no_rare <- P_byplot_no_rare[grepl("Maquis",unit),][order(year,site)][,subunit:=factor(subunit)]
+```
+
+## Mediterranean Maquis
+
+Unit is divided into 3 subunits: Judea, Carmel and Galilee. Factors are proximity to settlements and time. Sampling started in spring 2012 (pilot year), but during T0 sampling was performed only in winter of 2014, and the next spring sampling was done in T1 (2015). Therefore 2012 will not be considered as pilot here but as T0. Total 5 campaigns, 3subunits per campaign, 5 sites per subunit, with 6 plots per site (total of 450 plot-campaign combinations).
+
+**Raw data** Total abundance: `r Araw[grepl("aquis",unit),sum(total_count)]` Number of observations: `r Araw[grepl("aquis",unit),.N]` Total richness: `r Araw[grepl("aquis",unit),uniqueN(SciName)]`
+
+**Filtered data** Total abundance: `r A[grepl("aquis",unit),sum(count_under_250)]` Number of observations: `r A[grepl("aquis",unit) & count_under_250>0,.N]` Total richness: `r A[grepl("aquis",unit) & count_under_250>0,uniqueN(SciName)]`
+
+### Model gma, abundance and richness
+
+Richness done *with* rare species. Abundance and mean abundance done *without* rare species. Full models include cosine and sine of the time difference from June 21st (in radians).
+
+#### richness
+
+Explore data and plot mean-variance plot. There is a strong relationship, indicating that employing GLMs is the proper way to analyze, rather than OLS (assumption of homogeneity is violated).
+
+```{r richness data explore}
+# include rare species in analysis
+P.anal <- copy(P) # set a fixed variable name for analysis, if want to switch between data WITH rare species and data WITHOUT rare species then only change once here
+print("RICHNESS WITH RARE SPECIES")
+plot_alpha_diversity(P.anal, x_val = "settlements", y_val = "richness", ylab_val = "richness", xlab_val = "settlements")
+plot_alpha_diversity(P.anal, x_val = "subunit", y_val = "richness", ylab_val = "richness", xlab_val = "subunit")
+
+dotchart(P.anal$richness, groups = P.anal$settlements, pch = as.numeric(P.anal$settlements), ylab = "settlements", xlab = "richness")
+dotchart(P.anal$richness, groups = P.anal$subunit, pch = as.numeric(P.anal$subunit), ylab = "subunit", xlab = "richness")
+IVs <- c("richness", "year_ct","site","settlements","subunit", "td_sc", "cos_td_rad", "sin_td_rad", "h_from_sunrise", "cos_hsun", "sin_hsun", "monitors_name",
+                        "wind", "precipitation", "temperature", "clouds")
+kable(summary(P.anal[,..IVs]))%>% kable_styling(font_size = 11)
+```
+
+no observation for all 4 weather variables. many NAs for sampling time of day variables.exclude from model. An extreme observation of richness\>20 in Judean highlands near settlements.
+
+```{r richness data explore 3}
+pairs(P.anal[,lapply(X = .SD,FUN = as.numeric),.SDcols=IVs[1:11]])
+kable(cor(P.anal[,lapply(X = .SD,FUN = as.numeric),.SDcols=IVs[1:11]], use = "pairwise.complete.obs")) %>% kable_styling(font_size = 11)
+```
+
+Fit Poisson glm, check for existence of overdispersion
+
+```{r model specification richness, warning=FALSE}
+mdl_r.poiss.int <- glm(data = P.anal, formula = richness ~ settlements * year_ct + subunit * year_ct + settlements * subunit + cos_td_rad + sin_td_rad , family = poisson)
+od <- mdl_r.poiss.int$deviance/mdl_r.poiss.int$df.residual
+print("Estimating overdispersion parameter phi: (Res. Dev.)/(n-p) where n=number of observations; p=number of parameters in the model.")
+print(paste0('od = ',od))
+```
+
+Overdispersion parameter is \< 1. Choose Poisson.
+
+```{r model specification richness 2}
+m0 <- mdl_r.poiss.int
+me0 <- glmer(data = P.anal, formula = richness ~ settlements * year_ct + subunit * year_ct + settlements * subunit + cos_td_rad + sin_td_rad + (1|site), family = poisson)
+
+```
+
+```{r}
+vif(me0)
+```
+
+go with mixed model, attempt model selection yet.
+
+```{r model specification richness 3}
+summary(me0)
+```
+
+perform stepwise model selection of poisson mixed model.
+
+```{r model selection richness}
+drop1(me0)
+```
+
+remove settlements X year.
+
+```{r model selection richness 2}
+me1 <- glmer(data = P.anal, formula =  richness ~  subunit * year_ct + settlements * subunit + cos_td_rad + sin_td_rad + (1|site), family = poisson)
+drop1(me1)
+```
+
+drop subunit X year
+
+```{r model selection richness 3}
+me1 <- glmer(data = P.anal, formula =  richness ~ year_ct + settlements * subunit + cos_td_rad + sin_td_rad + (1|site), family = poisson)
+drop1(me1)
+```
+
+drop year
+
+```{r model selection richness 4}
+me1 <- glmer(data = P.anal, formula =  richness ~ settlements * subunit + cos_td_rad + sin_td_rad + (1|site), family = poisson)
+drop1(me1)
+```
+
+```{r model selection richness 5}
+me1 <- glmer(data = P.anal, formula =  richness ~ settlements * subunit + cos_td_rad + (1|site), family = poisson)
+drop1(me1)
+```
+
+interaction between settlements and subunit and cosin time of year remain. Final model:
+
+```{r model selection richness 6}
+summary(me1)
+ranef(me1)
+dotplot(ranef(me1, condVar=TRUE))
+plot(me1)
+qqmath(me1)
+# scale location plot
+plot(me1, sqrt(abs(resid(.))) ~ fitted(.),
+     type = c("p", "smooth"),
+     main="scale-location",
+     par.settings = list(plot.line =
+                           list(alpha=1, col = "red",
+                                lty = 1, lwd = 2)))
+```
+
+attempt to add year, see if significant:
+
+```{r model selection richness 7}
+summary(glmer(data = P.anal, formula =  richness ~ year_ct + settlements * subunit + cos_td_rad + (1|site), family = poisson))
+```
+
+year not significant, rightfully dropped. center time of year variable, highly correlated with intercept.
+
+```{r model selection richness 8}
+P.anal[,`:=`(cos_td_rad_c=cos_td_rad-mean(cos_td_rad),
+             sin_td_rad_c=sin_td_rad-mean(sin_td_rad))]
+me1 <- glmer(data = P.anal, formula =  richness ~ settlements * subunit + cos_td_rad_c + (1|site), family = poisson)
+summary(me1)
+```
+
+```{r model interpretation richness, fig.height=8, fig.width=10}
+P.anal <- P.anal
+summ(me1, exp=T, digits = 3)
+
+
+cat_plot(me1, pred = settlements, modx = subunit, interval = TRUE)
+plot_model_interaction_cat (P.anal = P.anal, m = me1, eff2plot = "settlements", modvar2plot = "subunit",
+                            export_plot = T, plot_points = T, fontname = SoN_fontname,
+                            outpath = output_path, legend_position = "bottom")
+```
+
+### Test for average differences among levels (average across levels of interaction)
+
+```{r model interpretation richness - test average differences among levels}
+EMM <- emmeans(object = me1, ~subunit*settlements)
+print(EMM)
+test_results <- contrast(object = EMM, method = list(far_minus_near = c(1/3,1/3,1/3,-1/3,-1/3,-1/3), carmel_minus_galilee = c(0,0.5,-0.5,0,0.5,-0.5),
+                                                     carmel_minus_judea = c(-0.5,0.5,0,-0.5,0.5,0), judea_minus_galilee = c(0.5,0,-0.5,0.5,0,-0.5)))
+print(test_results)
+print(coef(test_results))
+```
+
+### Test for  differences among levels of interaction
+
+```{r model interpretation richness - test differences among levels of interaction}
+test_results_settlements <- test(pairs(EMM, by="subunit"), by=NULL, adjust="fdr")
+print(test_results_settlements)
+test_results_subunit <- test(pairs(EMM, by="settlements"), by=NULL, adjust="fdr")
+print(test_results_subunit)
+
+print("% difference in near plots compared to far plots")
+print("Judea")
+as.data.table(test_results_settlements)[subunit %like% "Judea", (exp(-1*estimate)-1)*100]
+print("Galilee")
+as.data.table(test_results_settlements)[subunit %like% "Galil", (exp(-1*estimate)-1)*100]
+print("Carmel")
+as.data.table(test_results_settlements)[subunit %like% "Carmel", (exp(-1*estimate)-1)*100]
+
+print("% difference between pairs of subunits NEAR settlements")
+print("How high is Judea compared to Galilee?")
+as.data.table(test_results_subunit)[settlements=="Near" & contrast=="Judean Highlands - Galilee", (exp(estimate)-1)*100]
+print("How high is Carmel compared to Galilee?")
+as.data.table(test_results_subunit)[settlements=="Near" & contrast=="Carmel - Galilee", (exp(estimate)-1)*100]
+```
+
+**statistically significant lower richness in Galilee (but only far from settlements, near there is no significant difference) and far from settlements. No significant change in richness over time.**
+
+#### geometric mean of abundance
+
+Explore data. Exclude time of day because of high number of NAs.
+
+```{r gma data explore}
+# exclude rare species in analysis
+P.anal <- copy(P_no_rare)
+P.anal <- P.anal[pilot==FALSE]
+
+print("GEOMETRIC MEAN ABUNDANCE WITHOUT RARE SPECIES")
+plot_alpha_diversity(P.anal, x_val = "settlements", y_val = "gma", ylab_val = "gma", xlab_val = "settlements")
+plot_alpha_diversity(P.anal, x_val = "subunit", y_val = "gma", ylab_val = "gma", xlab_val = "subunit")
+
+dotchart(P.anal$gma, groups = P.anal$settlements, pch = as.numeric(P.anal$settlements), ylab = "settlements", xlab = "gma")
+dotchart(P.anal$gma, groups = P.anal$subunit, pch = as.numeric(P.anal$subunit), ylab = "subunit", xlab = "gma")
+IVs <- c("gma", "year_ct","site","settlements","subunit", "td_sc", "cos_td_rad", "sin_td_rad")
+kable(summary(P.anal[,..IVs]))%>% kable_styling(font_size = 11)
+```
+
+Fit glm, compare gamma, gaussian (poisson inappropriate because response is not discrete)
+
+```{r model specification gma, warning=FALSE}
+# mdl_g.gamma.int <- glm(data = P.anal, formula = gma ~ settlements * year_ct + subunit*year_ct + cos_td_rad + sin_td_rad, family = Gamma) # run this if there are no zeros 
+# plot(mdl_g.gamma.int,which = 1:3,sub.caption = "gamma")
+mdl_g.gauss.int <- glm(data = P.anal, formula = gma ~ settlements * year_ct + subunit * year_ct + subunit * settlements + cos_td_rad + sin_td_rad, family = gaussian)
+plot(mdl_g.gauss.int,which = 1:3,sub.caption = "gaussian")
+```
+
+Remove rows 211, 376, 408. Fit fixed and mixed models.
+
+```{r model specification gma 2}
+P.anal <- P.anal[!c(211, 376, 408)]
+m0 <- lm(data = P.anal, formula = gma ~ settlements * year_ct + subunit * year_ct + subunit * settlements + cos_td_rad + sin_td_rad)
+me0 <- lmer(data = P.anal, formula = gma ~ settlements * year_ct + subunit * year_ct + subunit * settlements + cos_td_rad + sin_td_rad + (1|site))
+```
+
+Mixed model converged
+
+```{r model specification gma 3}
+summary(me0)
+```
+
+perform stepwise model selection of gaussian model.
+
+```{r model selection gma}
+drop1(me0)
+```
+
+drop subunit X year
+
+```{r}
+me1 <- lmer(data = P.anal, formula =  gma ~ settlements * year_ct + subunit * settlements + cos_td_rad + sin_td_rad + (1|site))
+drop1(me1)
+```
+
+drop subunit X settlements
+
+```{r}
+me1 <- lmer(data = P.anal, formula =  gma ~ settlements * year_ct + subunit + cos_td_rad + sin_td_rad + (1|site))
+drop1(me1)
+```
+
+drop subunit
+
+```{r}
+me1 <- lmer(data = P.anal, formula =  gma ~ settlements * year_ct + cos_td_rad + sin_td_rad + (1|site))
+drop1(me1)
+```
+
+drop settlements X year
+
+```{r}
+me1 <- lmer(data = P.anal, formula =  gma ~ settlements + year_ct + cos_td_rad + sin_td_rad + (1|site))
+drop1(me1)
+```
+
+drop year
+
+```{r}
+me1 <- lmer(data = P.anal, formula =  gma ~ settlements + sin_td_rad + cos_td_rad + (1|site))
+drop1(me1)
+```
+
+drop settlements
+
+```{r}
+me1 <- lmer(data = P.anal, formula =  gma ~ sin_td_rad + cos_td_rad + (1|site))
+drop1(me1)
+```
+
+only time of year remains in the model.
+
+This is the final model:
+
+```{r model selection gma 2}
+summary(me1)
+plot(me1, which=1:3)
+```
+
+```{r model interpretation gma}
+# summ(me1)
+# 
+# effplot1 <- plot_model_effect(P.anal = P.anal, m = me1, eff2plot = "settlements", export_plot = TRUE, plot_points = TRUE, fontname = SoN_fontname, outpath = output_path)
+# effplot1
+```
+
+#### abundance
+
+Explore data
+
+```{r abundance data explore}
+# exclude rare species in analysis
+P.anal <- copy(P_no_rare)
+
+print("ABUNDANCE WITHOUT RARE SPECIES")
+plot_alpha_diversity(P.anal, x_val = "settlements", y_val = "abundance", ylab_val = "abundance", xlab_val = "settlements")
+plot_alpha_diversity(P.anal, x_val = "subunit", y_val = "abundance", ylab_val = "abundance", xlab_val = "subunit")
+
+dotchart(P.anal$abundance, groups = P.anal$settlements, pch = as.numeric(P.anal$settlements), ylab = "settlements", xlab = "abundance")
+dotchart(P.anal$abundance, groups = P.anal$subunit, pch = as.numeric(P.anal$subunit), ylab = "subunit", xlab = "abundance")
+IVs <- c("abundance", "year_ct","site","settlements","subunit", "td_sc", "cos_td_rad", "sin_td_rad")
+kable(summary(P.anal[,..IVs]))%>% kable_styling(font_size = 11)
+```
+
+Some outliers with total abundance \>100. Examine:
+
+```{r abundance data explore 2}
+P.anal[abundance>100,.(subunit,point_name,datetime,monitors_name,richness,gma,abundance)]
+```
+
+Exclude 3 plots with high abundance (\>150) to improve model fit.
+
+```{r model specification abundance, warning=FALSE, eval=FALSE}
+P.anal <- P.anal[abundance<150]
+mdl_a.po <- glm(data = P.anal, formula = abundance ~ settlements * year_ct + subunit * year_ct + subunit * settlements + cos_td_rad + sin_td_rad, family = poisson)
+od <- mdl_a.po$deviance/mdl_a.po$df.residual
+print("Estimating overdispersion parameter phi: (Res. Dev.)/(n-p) where n=number of observations; p=number of parameters in the model.")
+print(paste0('od = ',od))
+plot(mdl_a.po,which = 1:2,sub.caption = "poisson")
+```
+
+PHI\>1, hence choose negative binomial. Fit fixed and mixed models. Choose mixed model if possible, otherwise choose a model with fixed-effects only.
+
+```{r model specification abundance 2}
+m0 <- glm.nb(data = P.anal, formula = abundance ~ settlements * year_ct + subunit * year_ct + subunit * settlements + cos_td_rad + sin_td_rad)
+AIC(m0)
+me0 <- glmer.nb(data = P.anal, formula =  abundance ~ settlements * year_ct + subunit * year_ct + subunit * settlements + cos_td_rad + sin_td_rad + (1|site))
+AIC(me0)
+```
+
+mixed model converged, slightly better AIC. Perform stepwise model selection of mixed model.
+
+```{r model selection abundance}
+drop1(me0)
+```
+
+drop subunit X year
+
+```{r model selection abundance 2}
+me1 <- glmer.nb(data = P.anal, formula =  abundance ~ settlements * year_ct + subunit * settlements + cos_td_rad + sin_td_rad + (1|site))
+drop1(me1)
+```
+
+drop settlements X year
+
+```{r}
+me1 <- glmer.nb(data = P.anal, formula =  abundance ~ year_ct + subunit * settlements + cos_td_rad + sin_td_rad + (1|site))
+drop1(me1)
+```
+
+drop year
+
+```{r}
+me1 <- glmer.nb(data = P.anal, formula =  abundance ~ subunit * settlements + cos_td_rad + sin_td_rad + (1|site))
+drop1(me1)
+```
+
+drop settlements X subunit
+
+```{r}
+me1 <- glmer.nb(data = P.anal, formula =  abundance ~ subunit + settlements + cos_td_rad + sin_td_rad + (1|site))
+drop1(me1)
+```
+
+Subunit, settlement and time of year remain, same as no interaction analysis.
+
+#### community analysis using package MVabund
+
+```{r explore single observations}
+abu_by_spp.maquis <- abu_by_spp[grepl("Maquis",unit),]
+abu_by_spp_no_rare.maquis <- abu_by_spp_no_rare[grepl("Maquis",unit),]
+
+spp <- abu_by_spp.maquis[,.SD[,(length(col_names)+1):ncol(abu_by_spp.maquis)]]
+# filter out species with zero counts (were either not observed or are rare and were excluded)
+spp <- spp[,.SD,.SDcols = colSums(spp)>0]
+spp <- mvabund(spp)
+
+spp_no_rare <- abu_by_spp_no_rare.maquis[,.SD[,(length(col_names)+1):ncol(abu_by_spp_no_rare.maquis)]]
+# filter out species with zero counts (were either not observed or are rare and were excluded)
+spp_no_rare <- spp_no_rare[,.SD,.SDcols = colSums(spp_no_rare)>0]
+spp_no_rare <- mvabund(spp_no_rare)
+
+env_data <- abu_by_spp_no_rare.maquis[pilot==FALSE,..col_names]
+env_data[,site:=factor(site)][,subunit:=factor(subunit)]
+
+try(expr = plot(spp ~ abu_by_spp.maquis$settlements,overall.main="raw abundances", transformation = "no"))
+try(plot(spp ~ abu_by_spp.maquis$subunit,overall.main="raw abundances", transformation = "no"))
+
+plot(sort(spp_no_rare[spp_no_rare>0]))
+dotchart(sort(A[grepl("Maquis",unit) & count_under_250>=30,count_under_250]))
+meanvar.plot(spp, xlab = "mean abundance of a given species across sites", ylab = "variance of the abundance of a given species across sites")
+```
+
+There are few observations with counts of \>60. Examine these:
+
+```{r explore single observations 2}
+A[grepl("Maquis",unit) & count_under_250>=60,.(point_name,datetime,SciName,monitors_name)]
+```
+
+start model specification:
+
+```{r community analysis MVabund model specification}
+mva_m0.po <- manyglm(formula = spp_no_rare ~ settlements*year_ct + subunit*year_ct + subunit*settlements + cos_td_rad + sin_td_rad, family = "poisson", data = env_data)
+mva_m0.nb <- manyglm(formula = spp_no_rare ~ settlements*year_ct + subunit*year_ct + subunit*settlements + cos_td_rad + sin_td_rad, family = "negative.binomial", data = env_data)
+aic_dt <- data.table(nb = mva_m0.nb$aic, po=mva_m0.po$aic)
+colMeans(aic_dt)
+print("POISSON")
+plot(mva_m0.po, which=1:3)
+print("NEGATIVE BINOMIAL")
+plot(mva_m0.nb, which=1:3)
+```
+
+negative binomial model is better than poisson according to residuals and AIC comparison.
+
+```{r community analysis MVabund model specification 2}
+mva_m0 <- mva_m0.nb
+mva_m1 <- manyglm(formula = spp_no_rare ~ settlements*year_ct + subunit*year_ct + subunit*settlements + cos_td_rad + sin_td_rad + site, data = env_data)
+aic_dt$nb1 <- mva_m1$aic
+colMeans(aic_dt)
+```
+
+The addition of the explanatory variable 'site' is somewhat improving the AIC of the model. Prefer to exclude site, for simplification. stepwise selection of model:
+
+```{r community analysis MVabund model selection}
+drop1(mva_m0)
+```
+
+drop settlements X year.
+
+```{r community analysis MVabund model selection 2}
+mva_m1 <- manyglm(formula = spp_no_rare ~ subunit*year_ct + subunit*settlements + cos_td_rad + sin_td_rad, family = "negative.binomial", data = env_data) 
+drop1(mva_m1)
+```
+
+final model includes subunit x settlements, subunit x year_ct and sampling time of year.
+
+```{r community analysis MVabund model validation}
+plot(mva_m1, which=1:3)
+```
+
+```{r community analysis MVabund model interpretation}
+# summ_m1 <- summary(mva_m1)
+# saveRDS(summ_m1, file = "../output/Maquis_MVabund_interactions_summary_output_999iter.rds")
+# anov_m1.uni <- anova(mva_m1, p.uni = "adjusted", nBoot = 99, show.time = "all")
+# saveRDS(anov_m1.uni, file = "../output/Maquis_MVabund_interactions_anova_output_99iter.rds")
+summ_m1 <- readRDS(file = "../output/Maquis_MVabund_interactions_summary_output_999iter.rds")
+anov_m1.uni <- readRDS("../output/Maquis_MVabund_interactions_anova_output_99iter.rds")
+print(summ_m1)
+print(anov_m1.uni)
+```
+
+Interactions are significant only for one species:
+subunit X settlements: corvus cornix
+Therefore present only the analysis EXCLUDING subunit interactions with time / settlements
+
+```{r community analysis MVabund model interpretation - plot coefficients}
+coefp <- merge(data.table(t(coef(mva_m1)/log(2)),keep.rownames=TRUE), data.table(t(anov_m1.uni$uni.p), keep.rownames = TRUE), by = "rn") # coefficients are on log2 scale to simplify interpretation, yet keep presenetation on log scale rather than linear. The link function used for poisson is log -> above 0 is a positive trend and below 0 is negative trend
+
+# add total species abundance
+coefp <- merge(coefp,as.data.table(colSums(spp_no_rare),keep.rownames = TRUE), by.x = "rn", by.y = "V1")
+
+# add hebrew name and traits
+sci_heb <- unique(A[,.(SciName,HebName)])
+sci_heb[,SciName:=make.names(SciName)]
+coefp <- merge(coefp, sci_heb, by.x = "rn", by.y = "SciName")
+
+# set column names based on the predictor variables
+colnames(coefp)[grepl("rn",colnames(coefp))] <- "SciName"
+colnames(coefp)[grepl("Intercept).x",colnames(coefp))] <- "intercept.coef"
+colnames(coefp)[grepl("Intercept).y",colnames(coefp))] <- "intercept.p"
+colnames(coefp)[colnames(coefp)=="settlementsNear"] <- "settlementsNear.coef"
+colnames(coefp)[colnames(coefp)=="settlements"] <- "settlements.p"
+colnames(coefp)[grepl("cos_td_rad.x",colnames(coefp))] <- "cos_td_rad.coef"
+colnames(coefp)[colnames(coefp)=="cos_td_rad.y"] <- "cos_td_rad.p"
+colnames(coefp)[grepl("sin_td_rad.x",colnames(coefp))] <- "sin_td_rad.coef"
+colnames(coefp)[grepl("sin_td_rad.y",colnames(coefp))] <- "sin_td_rad.p"
+colnames(coefp)[colnames(coefp)=="year_ct.x"] <- "year_ct.coef"
+colnames(coefp)[colnames(coefp)=="year_ct.y"] <- "year_ct.p"
+colnames(coefp)[colnames(coefp)=="V2"] <- "species_abundance"
+#colnames(coefp)[colnames(coefp)=="dunesshifting"] <- "dunesShifting.coef"
+#colnames(coefp)[colnames(coefp)=="dunes"] <- "dunes.p"
+#colnames(coefp)[colnames(coefp)=="site"] <- "site.p"
+colnames(coefp)[colnames(coefp)=="subunitCarmel"] <- "subunitCarmel.coef"
+colnames(coefp)[colnames(coefp)=="subunitGalilee"] <- "subunitGalilee.coef"
+colnames(coefp)[colnames(coefp)=="subunit"] <- "subunit.p"
+
+
+# plot_coefs_settle <- plot_coefs_with_traits(D = A_no_rare[grepl("Maquis",unit)],
+#                                      cp = coefp[,.(SciName,settlementsNear.coef,settlements.p,species_abundance)],
+#                                      plot_title = "Effect of proximity to settlements on species abundance",
+#                                      plot_xlabel = expression(paste("coefficient of NEAR settlements, (log"[2]," scale)")),
+#                                      mark_batha = FALSE)
+# plot_coefs_settle
+
+# plot_coefs_settle <- plot_coefs_with_traits_for_publication(D = A_no_rare[grepl("Maquis",unit)],
+#                                                 cp = coefp[,.(SciName,settlementsNear.coef,settlements.p,species_abundance)],
+#                                                 plot_title = "Effect of proximity to settlement on species abundance",
+#                                                 plot_xlabel = expression(paste("coefficient of NEAR settlement, (log"[2]," scale)")),
+#                                                 mark_batha = TRUE,
+#                                                 show_legend = FALSE,
+#                                                 export_plot = TRUE,
+#                                                 fontname = SoN_fontname,
+#                                                 effect_str = "settlements",
+#                                                 outpath = "../output/")
+# plot_coefs_settle
+
+
+# compute mean of year coefficients (geometric mean of linear scale coefficients) to plot single year coefficient
+#coefp[,mn_year.coef:=year_ct.coef+`subunitCarmel:year_ct`/3+`subunitGalilee:year_ct`/3]
+# if any of the relevant terms - year_ct, subunit X year - is <0.1, set the p-value of the mean year coef to be 0.01 (arbitrary, lower than 0.1 which is the threshold)
+#coefp[,mn_year.p:=apply(X = .SD, 1, FUN = \(x) 1-sum(x<0.1)*0.99), .SDcols=c("year_ct.p","subunit:year_ct")]
+
+# plot_coefs_year <- plot_coefs_with_traits(D = A_no_rare[grepl("Maquis",unit)],
+#                                      cp = coefp[,.(SciName,mn_year.coef,mn_year.p,species_abundance)],
+#                                      plot_title = "Mean temporal effect on species abundance",
+#                                      plot_xlabel = expression(paste("coefficient of year counter, (log"[2]," scale)")),
+#                                      mark_batha = FALSE)
+
+
+# plot_coefs_year <- plot_coefs_with_traits_for_publication(D = A_no_rare[grepl("Maquis",unit)],
+#                                      cp = coefp[,.(SciName,year_ct.coef,year_ct.p,species_abundance)],
+#                                      plot_title = "Temporal effect on species abundance",
+#                                      plot_xlabel = expression(paste("coefficient of year counter, (log"[2]," scale)")),
+#                                      mark_batha = TRUE,
+#                                                 show_legend = FALSE,
+#                                                 export_plot = TRUE,
+#                                                 fontname = SoN_fontname,
+#                                                 effect_str = "year_ct",
+#                                                 outpath = "../output/")
+# 
+# plot_coefs_year
+
+# plot the coefficients of year considering interaction with subunits
+# coef_cutoff <- 0.25 # do not display species with all three coefs below this
+# X <- coefp[,.(Judea=year_ct.coef,
+#               Carmel=year_ct.coef + `subunitCarmel:year_ct`,
+#               Galil=year_ct.coef + `subunitGalilee:year_ct`,
+#               species_abundance,
+#               SciName,HebName)]
+# Xcut <- X[abs(Judea)>coef_cutoff | abs(Carmel)>coef_cutoff | abs(Galil)>coef_cutoff]
+# col_scale_min <- -0.7
+# p_yearsubu <- ggplot(data = Xcut, aes(x = Galil, y = Carmel, color=Judea)) +
+#   theme_light() +
+#   geom_hline(yintercept = 0, color = "darkslategrey") +
+#   geom_vline(xintercept = 0, color = "darkslategrey") +
+#   geom_point(size=3.5) +
+#   scale_color_gradient2(midpoint=0, low="darkred", mid="white",high="darkblue", space ="Lab",
+#                         limits=c(col_scale_min,NA), oob=scales::squish, name=paste0("Judea (lower limit=",col_scale_min,")")) +
+#   geom_text_repel(aes(label = paste0("(",species_abundance,") ",HebName)), color="black", size=3.5, force_pull = 0, max.overlaps = 50,
+#                   max.iter = 1e5, box.padding = 0.7, min.segment.length = 0) +
+#   ggtitle("Year coefficient for three Mediterranean Maquis subunits")
+# 
+# p_yearsubu
+
+```
+
+### Chloris chloris
+
+```{r community analysis MVabund interpretation chlchl}
+#####Chloris chloris - ירקון#####
+
+plot_alpha_diversity(P = abu_by_spp.maquis, x_val = "settlements", y_val = "Chloris chloris", ylab_val = "Chloris chloris")
+d.chloris <- cbind(env_data,data.table(Chloris.chloris = spp_no_rare[,"Chloris.chloris"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.chloris <- glm.nb(formula = Chloris.chloris~subunit * year_ct + subunit * settlements + cos_td_rad + sin_td_rad, data = d.chloris)
+coef(mva_m1)[,"Chloris.chloris"]
+coef(m.chloris)
+
+plot_model_interaction(P.anal = d.chloris, m = m.chloris, eff2plot = "year_ct", modvar2plot = "subunit", plot_points=FALSE, plot_residuals=FALSE, export_plot=TRUE, ylabel = NULL, fontname = SoN_fontname, fontsize=22, pdf_width=160, outpath = output_path)
+
+chloris_interact <- interact_plot(model = m.chloris, data=d.chloris, pred = year_ct, modx=subunit, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Temporal effect on abundance of Prinia gracilis")
+
+chloris_interact
+
+emm_year_ct <- emtrends(m.chloris, specs = "subunit", var = "year_ct", type = "response")
+print(emm_year_ct)
+test_year_ct <- test(emm_year_ct, null=0, adjust="fdr")
+print(test_year_ct)
+```
+
+### Prinia gracilis
+
+```{r community analysis MVabund interpretation prigra}
+#####Prinia gracilis####
+
+plot_alpha_diversity(P = abu_by_spp.maquis, x_val = "settlements", y_val = "Prinia gracilis", ylab_val = "Prinia gracilis")
+d.prigra <- cbind(env_data,data.table(Prinia.gracilis = spp_no_rare[,"Prinia.gracilis"]))
+# this is not the same model as the manyglm, to show the temporal trend better.
+m.prigra <- glm.nb(formula = Prinia.gracilis~subunit * year_ct + subunit * settlements + cos_td_rad + sin_td_rad, data = d.prigra)
+coef(mva_m1)[,"Prinia.gracilis"]
+coef(m.prigra)
+
+plot_model_interaction(P.anal = d.prigra, m = m.prigra, eff2plot = "year_ct", modvar2plot = "subunit", plot_points=FALSE, plot_residuals=FALSE, export_plot=TRUE, ylabel = NULL, fontname = SoN_fontname, fontsize=22, pdf_width=160, outpath = output_path)
+
+prigra_interact <- interact_plot(model = m.prigra, data=d.prigra, pred = year_ct, modx=subunit, interval = T, plot.points = F, jitter = c(0.1,0), point.size = 3, cat.pred.point.size = 4, partial.residuals = F, colors = "Qual1", main.title = "Temporal effect on abundance of Prinia gracilis")
+
+prigra_interact
+
+#Decrease of 40.63%
+carmel_time <- as.data.table(prigra_interact$data)[subunit=="Carmel",Prinia.gracilis]
+print(carmel_time)
+1 - 0.2948085/0.4965926 
+(max(carmel_time) - min(carmel_time))/max(carmel_time)
+
+#Decreace of 88.39%
+galilee_time <- as.data.table(prigra_interact$data)[subunit=="Galilee",Prinia.gracilis]
+(max(galilee_time) - min(galilee_time))/max(galilee_time)
+
+#Increase of 14.47%
+judea_time <- as.data.table(prigra_interact$data)[subunit=="Judean Highlands",Prinia.gracilis]
+(max(judea_time) - min(judea_time))/min(judea_time)
+
+
+emm_year_ct <- emtrends(m.prigra, specs = "subunit", var = "year_ct", type = "response")
+print(emm_year_ct)
+test_year_ct <- test(emm_year_ct, null=0, adjust="fdr")
+print(test_year_ct)
+```
+
+### Corvus cornix
+
+```{r community analysis MVabund interpretation corcor}
+####Corvus cornix - עורב אפור#####
+
+plot_alpha_diversity(P = abu_by_spp.maquis, x_val = "settlements", y_val = "Corvus cornix", ylab_val = "Corvus cornix")
+d.corvus <- cbind(env_data,data.table(Corvus.cornix = spp_no_rare[,"Corvus.cornix"]))
+# this is not the same model as the manyglm, to show that the trend is mainly near settlements.
+m.corvus <- glm.nb(formula = Corvus.cornix ~ subunit * year_ct + subunit * settlements + cos_td_rad + sin_td_rad, data = d.corvus)
+coef(mva_m1)[,"Corvus.cornix"]
+coef(m.corvus)
+
+judea_far <- as.data.table(d.corvus)[subunit=="Judea"]
+judea_far <- as.data.table(judea_far)[settlements=="Far"]
+sum(judea_far$Corvus.cornix)
+
+corcor_interact <- cat_plot(m.corvus, pred = settlements, modx = subunit, interval = TRUE)
+corcor_interact
+
+EMM <- emmeans(object = m.corvus, ~ subunit*settlements)
+print(EMM)
+#Judea near vs far
+(exp(-0.5836)/exp(-33.3498) -1) *100
+#Carmel near vs far
+(exp(0.5091)/exp(-0.1883) -1) *100
+#Galilee near vs far 
+(exp(-0.0658)/exp(-1.2868) -1) *100
+
+test_results_subunit <- test(pairs(EMM, by="subunit"), by=NULL, adjust="fdr")
+print(test_results_subunit)
+```
+
+### Spelopelia senegalensis
+
+```{r community analysis MVabund interpretation spesen}
+#####Spilopelia senegalensis - צוצלת####
+
+plot_alpha_diversity(P = abu_by_spp.maquis, x_val = "settlements", y_val = "Spilopelia senegalensis", ylab_val = "Spilopelia senegalensis")
+d.spilop <- cbind(env_data,data.table(Spilopelia.senegalensis = spp_no_rare[,"Spilopelia.senegalensis"]))
+# this is not the same model as the manyglm, to show that the trend is mainly near settlements.
+m.spilop <- glm.nb(formula = Spilopelia.senegalensis ~ subunit * year_ct + subunit * settlements + cos_td_rad + sin_td_rad, data = d.spilop)
+coef(mva_m1)[,"Spilopelia.senegalensis"]
+coef(m.spilop)
+
+cat_plot(m.spilop, pred = settlements, modx = subunit, interval = TRUE)
+
+EMM <- emmeans(object = m.spilop, ~ subunit*settlements)
+print(EMM)
+#Judea near vs far
+(exp(0.979)/exp(-1.917) -1) *100
+#Carmel near vs far
+(exp(0.846 )/exp(-2.021) -1) *100
+#Galilee near vs far 
+(exp(-0.244)/exp(-3.012) -1) *100
+
+test_results_subunit <- test(pairs(EMM, by="subunit"), by=NULL, adjust="fdr")
+print(test_results_subunit)
+
+
+```
+
+### Session information
+
+```{r}
+session_info()
+```
+

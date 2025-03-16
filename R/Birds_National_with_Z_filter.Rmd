@@ -1,0 +1,312 @@
+---
+title: "Birds_National"
+author: "Ron Chen"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+#knitr::opts_chunk$set(dev = "cairo_pdf", dev.args=list(cairo_pdf = list(family='Arial')))
+
+# pcks <- list('devtools','rlang','ggplot2','data.table', 'dplyr','mvabund','kableExtra','lme4','MASS','vegan',
+#              'jtools', 'interactions','car','ecoCopula','emmeans','Cairo','extrafont', 'gllvm')
+# sapply(pcks, require, character = TRUE)
+library (devtools)
+library (rlang)
+library (ggplot2)
+library (data.table)
+library (dplyr)
+library (mvabund)
+library (kableExtra)
+library (lme4)
+library (MASS)
+library (vegan)
+library (jtools)
+library (interactions)
+library (car)
+library (ecoCopula)
+library (emmeans)
+library (Cairo)
+library (extrafont)
+
+source("plot_model_effect.R")
+source("prepare_bird_data_with_Z_filter.R")
+source("plot_alpha_diversity.R")
+source("plot_coefs_with_traits.R")
+source("plot_coefs_with_traits_for_publication.R")
+source("multiplot.R")
+source("plot_individual_species_national.R")
+
+rare_min_samp_thr_national <- 20
+rare_min_samp_thr_national.all_data <- 80
+rare_min_units_thr_national.all_data <- 3
+export_all_plots <- FALSE
+export_first_plot <- TRUE
+
+# define font name
+SoN_fontname <- "Almoni ML v5 AAA"
+
+# Define the output folder path
+output_path <- file.path("..","output","national")
+
+# Check if the output folder exists, and create it if it doesn't
+if (!dir.exists(output_path)) {
+  dir.create(output_path, recursive = TRUE)
+  message("Folder '", output_path, "' has been created.")
+} else {
+  message("Folder '", output_path, "' already exists.")
+}
+```
+
+```{r load using function}
+out <- prepare_bird_data()
+var_names <- names(out)
+for (i in 1:length(var_names)) {
+  assign(var_names[i], out[[i]])
+}
+rm(out)
+P <- P_byplot
+P_no_rare <- P_byplot_no_rare
+```
+
+## National analysis - analyze ALL data from all units
+
+```{r}
+# define rare species
+spec_names_no_rare_by_samples <- which(inc_by_spp_no_rare[,dplyr::select(.SD, any_of(unique(Araw[,SciName])))] %>% colSums() >= rare_min_samp_thr_national.all_data) %>% names()
+tmp99 <- inc_by_spp_no_rare[,dplyr::select(.SD, any_of(c("unit",unique(Araw[,SciName]))))] %>%
+    melt.data.table(variable.name = "SciName", value.name = "is.present", id.vars = "unit")
+spec_names_no_rare_by_units <- tmp99[is.present==TRUE, .(num_units=uniqueN(unit)), by=SciName][num_units>=rare_min_units_thr_national.all_data,SciName]
+spec_names_no_rare <- intersect(spec_names_no_rare_by_samples, spec_names_no_rare_by_units)
+```
+
+**Species in NATIONAL analysis, all plots, minimum number of plots `r rare_min_samp_thr_national.all_data` and minimum number of units `r rare_min_units_thr_national.all_data``:**
+
+```{r}
+unique(A[SciName %in% spec_names_no_rare, .(SciName, HebName)])[order(SciName)][,.(.I, SciName, HebName)] %>% kbl %>%  kable_styling(font_size = 11)
+```
+
+```{r}
+unique(abu_by_spp_no_rare[,.(num_samples=uniqueN(point_name)), keyby=.(unit, subunit, agriculture, settlements, land_use, habitat, dunes, year)]) %>% kbl %>%  kable_styling(font_size = 11)
+
+spp_no_rare <- abu_by_spp_no_rare[,dplyr::select(.SD, all_of(spec_names_no_rare))]
+# remove sites where none of the species were observed for the entire monitoring period
+samps2remove <- which(rowSums(spp_no_rare)==0)
+```
+
+**The following plots had zero total abundance:**
+
+```{r}
+abu_by_spp_no_rare[samps2remove, .(num_years=uniqueN(year)), keyby = point_name] %>% kbl %>%  kable_styling(font_size = 11)
+```
+
+**Only three plots had zeros for more than one year - no plots or sites to be removed.**
+
+```{r}
+# spp_no_rare <- mvabund(spp_no_rare[!samps2remove])
+# env_data <- abu_by_spp_no_rare[!samps2remove,..col_names]
+spp_no_rare <- mvabund(spp_no_rare)
+env_data <- abu_by_spp_no_rare[,..col_names]
+factor_col_names <- c("unit","subunit","site","settlements","agriculture","habitat","dunes","land_use","point_name")
+env_data[,lapply(.SD,FUN = is.factor), .SDcols = factor_col_names] # already factors, but need to eliminate unnecessary levels
+env_data[,(factor_col_names):=lapply(.SD,as.factor), .SDcols = factor_col_names]
+
+# create campaign variable
+env_data[,campaign:=ceiling((year-2014)/2)][year==2012,campaign:=0]
+
+# create unique site variable
+env_data[,unit_site:=as.factor(paste(unit,site,sep = "_"))]
+
+print("abundance observations, aggregated into plots and species (i.e., several observations from the same species in the same plot are aggregated):")
+plot(sort(spp_no_rare[spp_no_rare>0]))
+print("zoom in on high abundance observations:")
+dotchart(sort(A_no_rare[count_under_250>=30,count_under_250]))
+meanvar.plot(spp_no_rare, xlab = "mean abundance of a given species across sites", ylab = "variance of the abundance of a given species across sites")
+```
+
+explore variables
+
+
+```{r}
+cat("\n\nTotal number of samples:\n\n",nrow(env_data))
+kable(summary(env_data)) %>% kable_styling(font_size = 11)
+pairs(env_data[,lapply(X = .SD,FUN = as.numeric), .SDcols = c("unit","site","unit_site","year","campaign","pilot","cos_td_rad","sin_td_rad")])
+kable(cor(env_data[,lapply(X = .SD,FUN = as.numeric), .SDcols = c("unit","site","unit_site","year","campaign","pilot","cos_td_rad","sin_td_rad")], use = "pairwise.complete.obs")) %>% kable_styling(font_size = 11)
+```
+
+start model specification:
+
+```{r community analysis MVabund model specification}
+mva_m0.po <- manyglm(formula = spp_no_rare ~ year_ct + unit * cos_td_rad + unit * sin_td_rad, family = "poisson", data = env_data)
+mva_m0.nb <- manyglm(formula = spp_no_rare ~ year_ct + unit * cos_td_rad + unit * sin_td_rad, family = "negative.binomial", data = env_data)
+aic_dt <- data.table(nb = mva_m0.nb$aic, po=mva_m0.po$aic)
+colMeans(aic_dt)
+print("POISSON")
+plot(mva_m0.po, which=1:3)
+print("NEGATIVE BINOMIAL")
+plot(mva_m0.nb, which=1:3)
+```
+
+negative binomial model is better than poisson according to residuals and AIC comparison.
+
+```{r community analysis MVabund model specification 2}
+mva_m0 <- mva_m0.nb
+# mva_m1 <- manyglm(formula = spp_no_rare ~ year_ct + unit_site*cos_td_rad + unit_site*sin_td_rad + site, data = env_data)
+# aic_dt$nb1 <- mva_m1$aic
+mva_m2 <- manyglm(formula = spp_no_rare ~ year_ct + unit_site + cos_td_rad + sin_td_rad, data = env_data)
+aic_dt$nb2 <- mva_m2$aic
+mva_m3 <- manyglm(formula = spp_no_rare ~ year_ct + unit + cos_td_rad + sin_td_rad, data = env_data)
+aic_dt$nb3 <- mva_m3$aic
+colMeans(aic_dt)
+```
+
+The addition of the explanatory variable 'site' is somewhat improving the AIC of the model. Start with unit and site.
+stepwise selection of model:
+
+```{r community analysis MVabund model selection}
+mva_m1 <- mva_m2
+drop1(mva_m1)
+```
+
+remove cosine, probably not significant for all species
+
+```{r}
+mva_m1 <- manyglm(formula = spp_no_rare ~ year_ct + unit_site + sin_td_rad, data = env_data)
+drop1(mva_m1)
+```
+
+final model year, unit_site and sampling time of year.
+
+```{r}
+####model validation####
+plot(mva_m1, which=1:3)
+```
+
+```{r model interpretation - anova}
+####model interpretation####
+# summ_m1 <- summary(mva_m1, nBoot=99)
+# saveRDS(summ_m1, file = "../output/National_MVabund_summary_output_99iter_min_samp80.rds")
+# anov_m1.uni <- anova(mva_m1, p.uni = "adjusted", nBoot = 99, show.time = "all")
+# saveRDS(anov_m1.uni, file = "../output/National_MVabund_anova_output_99iter_min_samp80.rds")
+summ_m1 <- readRDS(file = "../output/National_MVabund_summary_output_99iter_min_samp80.rds")
+print(summ_m1)
+anov_m1.uni <- readRDS(file = "../output/National_MVabund_anova_output_99iter_min_samp80.rds")
+print(anov_m1.uni)
+```
+
+plot coefficients:
+
+```{r}
+####plot coefs####
+coefp <- merge(data.table(t(coef(mva_m1)/log(2)),keep.rownames=TRUE), data.table(t(anov_m1.uni$uni.p), keep.rownames = TRUE), by = "rn") # coefficients are on log2 scale to simplify interpretation, yet keep presenetation on log scale rather than linear. The link function used for poisson is log -> above 0 is a positive trend and below 0 is negative trend
+
+# add total species abundance
+coefp <- merge(coefp,as.data.table(colSums(spp_no_rare),keep.rownames = TRUE), by.x = "rn", by.y = "V1")
+
+# add hebrew name and traits
+sci_heb <- unique(A[,.(SciName,HebName)])
+sci_heb[,SciName:=make.names(SciName)]
+coefp <- merge(coefp, sci_heb, by.x = "rn", by.y = "SciName")
+
+# set column names based on the predictor variables
+colnames(coefp)[grepl("^rn$",colnames(coefp))] <- "SciName"
+colnames(coefp)[grepl("Intercept).x",colnames(coefp))] <- "intercept.coef"
+colnames(coefp)[grepl("Intercept).y",colnames(coefp))] <- "intercept.p"
+colnames(coefp)[colnames(coefp)=="settlementsNear"] <- "settlementsNear.coef"
+colnames(coefp)[colnames(coefp)=="settlements"] <- "settlements.p"
+colnames(coefp)[colnames(coefp)=="agricultureNear"] <- "agricultureNear.coef"
+colnames(coefp)[colnames(coefp)=="agriculture"] <- "agriculture.p"
+colnames(coefp)[grepl("cos_td_rad.x",colnames(coefp))] <- "cos_td_rad.coef"
+colnames(coefp)[colnames(coefp)=="cos_td_rad.y"] <- "cos_td_rad.p"
+colnames(coefp)[grepl("sin_td_rad.x",colnames(coefp))] <- "sin_td_rad.coef"
+colnames(coefp)[grepl("sin_td_rad.y",colnames(coefp))] <- "sin_td_rad.p"
+colnames(coefp)[colnames(coefp)=="year_ct.x"] <- "year_ct.coef"
+colnames(coefp)[colnames(coefp)=="year_ct.y"] <- "year_ct.p"
+colnames(coefp)[colnames(coefp)=="V2"] <- "species_abundance"
+colnames(coefp)[colnames(coefp)=="dunesshifting"] <- "dunesShifting.coef"
+colnames(coefp)[colnames(coefp)=="dunes"] <- "dunes.p"
+colnames(coefp)[colnames(coefp)=="site"] <- "site.p"
+colnames(coefp)[colnames(coefp)=="unit_site"] <- "unit_site.p"
+colnames(coefp)[colnames(coefp)=="subunitCarmel"] <- "subunitCarmel.coef"
+colnames(coefp)[colnames(coefp)=="subunitGalilee"] <- "subunitGalilee.coef"
+colnames(coefp)[colnames(coefp)=="subunit"] <- "subunit.p"
+colnames(coefp)[colnames(coefp)=="habitatWadi"] <- "habitatWadi.coef"
+colnames(coefp)[colnames(coefp)=="habitat"] <- "habitat.p"
+
+plot_coefs_year <- plot_coefs_with_traits_for_publication(D = A_no_rare,
+                                                          cp = coefp[,.(SciName,year_ct.coef,year_ct.p,species_abundance)],
+                                                          plot_title = "Temporal effect on species abundance",
+                                                          plot_xlabel = expression(paste("coefficient of year counter, (log"[2]," scale)")),
+                                                          mark_batha = TRUE,
+                                                          show_legend = FALSE,
+                                                          export_plot = export_first_plot,
+                                                          fontname = SoN_fontname,
+                                                          effect_str = "year_ct",
+                                                          outpath = output_path)
+plot_coefs_year
+```
+
+## Plot individual species
+### Streptopelia turtur
+
+```{r, error=TRUE}
+plot_individual_species_national(spec_name = "Streptopelia turtur", spec_var_name = "Streptopelia.turtur", model = mva_m1)
+                                 # at_list = list(unit="Herbaceous and Dwarf-Shrub Vegetation", site="Natur"))
+```
+
+### Acridotheres tristis
+
+```{r, error=TRUE}
+plot_individual_species_national(spec_name = "Acridotheres tristis", spec_var_name = "Acridotheres.tristis",
+                                 at_list = list(unit_site="Mediterranean-Desert Transition Zone_Beit Yatir"),
+                                 model = mva_m1)
+```
+
+### Turdus merula
+
+```{r, error=TRUE}
+plot_individual_species_national(spec_name = "Turdus merula",
+                                 spec_var_name = "Turdus.merula",
+                                 model = mva_m1,
+                                 at_list = list(unit_site="Mediterranean Maquis_Yagur"))
+```
+
+### Spilopelia senegalensis
+
+```{r, error=TRUE}
+plot_individual_species_national(spec_name = "Spilopelia senegalensis",
+                                 spec_var_name = "Spilopelia.senegalensis",
+                                 model = mva_m1,
+                                 at_list = list(unit_site="Mediterranean Maquis_Givat Yeshayahu"))
+```
+
+### Parus major
+
+```{r, error=TRUE}
+plot_individual_species_national(spec_name = "Parus major",
+                                 spec_var_name = "Parus.major",
+                                 model = mva_m1,
+                                 at_list = list(unit_site="Mediterranean Maquis_Givat Yeshayahu"))
+```
+
+### Passer domesticus
+
+```{r, error=TRUE}
+plot_individual_species_national(spec_name = "Passer domesticus",
+                                 spec_var_name = "Passer.domesticus",
+                                 model = mva_m1,
+                                 disregard_p_val = TRUE)
+```
+
+
+```{r export manyglm p-values}
+write.csv(coefp[,.(SciName,HebName,year_ct.p, unit_site.p)], file = file.path(output_path,"species_composition_p_values.csv"), row.names = F, fileEncoding = "MS-HEBR")
+```
+
+### Session information
+
+```{r}
+session_info()
+```
+
