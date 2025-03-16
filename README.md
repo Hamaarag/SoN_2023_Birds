@@ -16,12 +16,29 @@ This project is licensed under the **MIT License** – see the [LICENSE](LICENSE
 
 ## Contents
 
-This repository includes the following key files:
+This repository is organized into the following directories:
 
-- **`analysis_script.R`** – Main script for data processing and analysis.
-- **`figures_script.R`** – Script for generating figures.
-- **`metadata.csv`** – Metadata required for the analyses.
-- **`README.md`** – This documentation file.
+- **`R/`** – Contains R scripts for data preparation, analysis, and visualization. Key components include:
+  - **Data Preparation**: Scripts for preprocessing bird data before analysis.
+  - **Analyses by Region**: RMarkdown files conducting analyses for different ecological regions.
+  - **Plotting Functions**: Scripts for generating figures used in the report.
+
+- **`data/`** – Includes input datasets required for the analyses.
+  - **Processed Data**: Pre-prepared datasets used for analysis.
+  - **Raw Data**: Trait tables and species interaction tables.
+
+- **`output/`** – Stores the output of the analyses.
+  - Currently, this folder contains **results from the models run within the RMarkdown scripts**, stored as `.rds` files.
+  - Future outputs may include summary statistics, tables, and figures.
+
+- **Project Configuration**:
+  - **`SoN_2023_Birds.Rproj`** – RStudio project file.
+  - **`renv/`** & **`renv.lock`** – Dependency management files for reproducibility.
+  - **`.gitignore`** & **`.Rprofile`** – Configuration and environment settings.
+
+- **Documentation**:
+  - **`README.md`** – This documentation file.
+  - **`LICENSE`** – License details.
 
 ---
 
