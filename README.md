@@ -97,7 +97,8 @@ rmarkdown::render("R/Birds_National_with_Z_filter.Rmd")
 
 ## Additonal notes regarding environment
 
- - Rstudio version:4.2.3  
+ - R version:4.2.3  
+ - RStudio version: 2024.12.1+563  
  - OS: Windows 10 x64  
  - The Rmd files are set to use the "Almoni ML v5 AAA" font. If you do not have this font installed, you may need to change the font in the Rmd files.  
  
