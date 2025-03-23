@@ -49,9 +49,9 @@
     },
     "Matrix": {
       "Package": "Matrix",
-      "Version": "1.5-5",
+      "Version": "1.5-4",
       "Source": "Repository",
-      "Repository": "R-Forge",
+      "Repository": "RSPM",
       "Requirements": [
         "R",
         "graphics",
@@ -61,7 +61,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "2ae737251cc11a3e18e5c2585e141b9a"
+      "Hash": "e779c7d9f35cc364438578f334cffee2"
     },
     "MatrixModels": {
       "Package": "MatrixModels",
