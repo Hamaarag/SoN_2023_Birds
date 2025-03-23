@@ -49,11 +49,12 @@
     },
     "Matrix": {
       "Package": "Matrix",
-      "Version": "1.5-4",
+      "Version": "1.6-0",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
         "R",
+        "grDevices",
         "graphics",
         "grid",
         "lattice",
@@ -61,7 +62,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "e779c7d9f35cc364438578f334cffee2"
+      "Hash": "31262fd18481fab05c5e7258dac163ca"
     },
     "MatrixModels": {
       "Package": "MatrixModels",
