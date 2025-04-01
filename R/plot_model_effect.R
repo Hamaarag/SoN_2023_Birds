@@ -22,7 +22,7 @@ plot_model_effect <- function (P.anal, m, eff2plot, plot_points=FALSE, plot_resi
   # xticklabs: to set these manually. Must match the number of breaks (tick marks) on the x-axis. currently only for year_ct.
   
   # Define a function to reverse Hebrew text in case markdown is knit to pdf
-  strReverse <- function(x){sapply(lapply(strsplit(x, NULL), rev), paste, collapse="")}
+  source("strReverse.R")
   
   pdf_aspect_ratio <- 2/3
   

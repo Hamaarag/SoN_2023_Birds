@@ -11,7 +11,7 @@ plot_two_coefs_with_traits_for_publication <- function (D,cp,plot_title,plot_xla
   # mark_batha is a boolean indicating whether to mark batha specialists with a different marker shape. If there are no batha specialists then mark_batha is set to FALSE, regardless of the value given at function call
   
   # Define a function to reverse Hebrew text in case markdown is knit to pdf
-  strReverse <- function(x){sapply(lapply(strsplit(x, NULL), rev), paste, collapse="")}
+  source("strReverse.R")
   
   pdf_aspect_ratio <- 2/3
   label_text_size <- 3

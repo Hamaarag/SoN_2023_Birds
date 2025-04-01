@@ -18,7 +18,7 @@ plot_model_interaction_cat <- function (P.anal, m, eff2plot, modvar2plot, plot_p
   # legend_position is a string indicating position of the legend as accepted by theme(legend.position = legend_position), e.g. "right", "bottom", "inside", etc.
   
   # Define a function to reverse Hebrew text in case markdown is knit to pdf
-  strReverse <- function(x){sapply(lapply(strsplit(x, NULL), rev), paste, collapse="")}
+  source("strReverse.R")
   
   pdf_aspect_ratio <- 2/3
   

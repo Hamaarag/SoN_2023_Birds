@@ -47,3 +47,8 @@ rsconnect/
 # All output html / pdf files
 *.html
 *.pdf
+
+# All files and folders under the output folder, except .rds files
+**/output/**
+!**/output/**/*.rds
+

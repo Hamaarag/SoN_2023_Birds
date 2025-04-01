@@ -31,6 +31,7 @@ library (Cairo)
 library (extrafont)
 library (ggvenn)
 
+source("strReverse.R")
 source("plot_model_effect.R")
 source("prepare_bird_data_with_Z_filter.R") # see comment in second chunk - this function is not used in the analysis
 source("plot_alpha_diversity.R")
@@ -1074,7 +1075,6 @@ rare_in_loess_unit_by_land_use <- dcast.data.table(A_rare_in_loess_unit, formula
 
 # draw venn diagram for presence / absence of rare species that did not make the cutoff
 #Reverse species names for pdf file
-strReverse <- function(x){sapply(lapply(strsplit(x, NULL), rev), paste, collapse="")}
 rare_in_loess_unit_by_land_use[,HebName:=factor(strReverse(as.character(HebName)))]
 #make list of species names
 rare_list_hebname <- list(`Bedouin agriculture` = unique(rare_in_loess_unit_by_land_use[`Bedouin Agriculture`>0,HebName]),

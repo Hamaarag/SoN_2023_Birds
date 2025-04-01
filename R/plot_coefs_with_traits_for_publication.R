@@ -29,7 +29,7 @@ plot_coefs_with_traits_for_publication <- function (D,cp,plot_title,plot_xlabel,
   require(Cairo)
   
   # Define a function to reverse Hebrew text in case markdown is knit to pdf
-  strReverse <- function(x){sapply(lapply(strsplit(x, NULL), rev), paste, collapse="")}
+  source("strReverse.R")
   
   pdf_aspect_ratio <- 2/3
   label_text_size <- 3
